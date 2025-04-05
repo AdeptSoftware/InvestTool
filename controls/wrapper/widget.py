@@ -1,0 +1,85 @@
+# widget.py
+from PyQt5.QtWidgets                        import QWidget
+from PyQt5.QtGui                            import QPainter, QWheelEvent, QKeyEvent, QPixmap
+from PyQt5.QtCore                           import Qt, QPoint
+
+from controls.abstract.view                 import AbstractView
+
+class AdeptWidget(QWidget):
+    """
+    Класс, реализующий базовые функции навигации и отрисовки графика\n
+    Пример инициализации:\n
+    class SomeWidget(AdeptWidget)\n
+    def __init__(self, parent, source : AbstractSource):\n
+        super().__init__(parent)\n
+        self.view = ChartView(self, source, CandlestickRenderer(QtContext(self)))
+    """
+    def __init__(self, parent):
+        """
+        Конструктор класса виджета графика
+        :param parent: родительское окно
+        :param source: источник данных
+        """
+        super().__init__(parent)
+        self._captured_position = None                                                                                  # type: QPoint
+        self.view               = None                                                                                  # type: AbstractView
+        # !!! К сожалению передать view нельзя в конструктор, т.к. QtContext надо проинициализированный QWidget-объект
+
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setMouseTracking(True)
+
+    # Логика перетаскивания содержимого
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._captured_position = event.pos()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._captured_position = None
+
+    def mouseMoveEvent(self, event):
+        if self._captured_position is not None:
+            offset = event.pos() - self._captured_position
+            self.view.scroll(offset.x(), offset.y())
+            self._captured_position = event.pos()
+            self.update()
+
+    # Логика масштабирования содержимого
+
+    def _zoom(self, event, condition):
+        factor = 1 + 2*(-1*int(condition))
+        if event.modifiers() & Qt.ShiftModifier:
+            self.view.zoom(0, factor)
+        else:
+            self.view.zoom(factor, 0)
+        self.update()
+
+    def wheelEvent(self, event : QWheelEvent):
+        self._zoom(event, event.angleDelta().y() < 0)
+
+    def keyPressEvent(self, event : QKeyEvent):
+        key = event.key()
+        if key in [Qt.Key_Plus, Qt.Key_Minus]:
+           self._zoom(event, key == Qt.Key_Minus)
+        elif key in [Qt.Key_Down, Qt.Key_Up, Qt.Key_Left, Qt.Key_Right]:
+            x = -1 if key == Qt.Key_Right else 1 if key == Qt.Key_Left else 0
+            y = -1 if key == Qt.Key_Down  else 1 if key == Qt.Key_Up   else 0
+            self.view.scroll(x * 20, y * 20)
+            self.update()
+
+    # Логика отрисовки изображений
+
+    def paintEvent(self, event):
+        pixmap : QPixmap = self.view.render()
+        if pixmap is not None:
+            painter = QPainter(self)
+            painter.drawPixmap(pixmap.rect(), pixmap)
+            painter.end()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.view.resize(self.width(), self.height())
+
+    def update(self):
+        super().update()

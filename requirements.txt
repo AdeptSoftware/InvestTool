@@ -1,0 +1,5 @@
+protobuf==5.29.4
+
+tinkoff~=0.1.1
+requests~=2.32.3
+PyQt5~=5.15.11

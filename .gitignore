@@ -1,0 +1,10 @@
+.idea
+.venv
+__pycache__
+clients\unused
+icons
+examples
+
+token.ini
+example.py
+
