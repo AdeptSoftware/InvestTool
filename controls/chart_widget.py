@@ -1,6 +1,6 @@
 # chart_widget.py
 from controls.chart.chart_view              import ChartView, AbstractSource
-from controls.chart.renderer.candlestick    import CandlestickRenderer
+from controls.chart.chart_renderer          import ChartRenderer
 from controls.wrapper.widget                import AdeptWidget
 from controls.wrapper.context               import QtContext
 from PyQt5.QtWidgets                        import QToolTip, QMenu
@@ -15,7 +15,7 @@ class ChartWidget(AdeptWidget):
         :param source: источник данных
         """
         super().__init__(parent)
-        self.view = ChartView(self, source, CandlestickRenderer(QtContext(self)))
+        self.view = ChartView(self, source, ChartRenderer(QtContext(self)))
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)

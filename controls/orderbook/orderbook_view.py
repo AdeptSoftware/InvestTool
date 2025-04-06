@@ -18,15 +18,19 @@ class OrderBookView(AbstractView):
 
     def set_focused_item(self, index):
         self._renderer.focused_item = max(-1, index)
+        self._renderer.update(self._data)
+        self._parent.update()
 
-    def update(self, data):
+    def update(self, data=None):
         """ Произошло обновление данных """
-        if issubclass(data.__class__, AbstractData):
-            data.last_price = self._data.last_price
-            self._data = data
-            self._parent.update()
-        else:
-            self._data.last_price = data
+        if data is not None:
+            if issubclass(data.__class__, AbstractData):
+                data.last_price = self._data.last_price
+                self._data = data
+            else:
+                self._data.last_price = data
+        self._renderer.update(self._data)
+        self._parent.update()
 
     def load(self, target, **kwargs):
         """ Загрузка данных, сохранение target """

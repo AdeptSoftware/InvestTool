@@ -1,4 +1,5 @@
 # context.py
+from typing import overload
 
 class Point:
     @property
@@ -103,21 +104,31 @@ class AbstractContext:
     def create_color(r, g, b) -> Color:
         pass
 
-    @staticmethod
-    def create_pen(color, width):
-        pass
+    @overload
+    def create_pen(self, color, width=1): ...
+    @overload
+    def create_pen(self, r, g, b, width=1): ...
 
-    @staticmethod
-    def create_brush(color):
+    def create_pen(self, *args, **kwargs):
+        raise NotImplemented("Must be implemented in subclass")
+
+    @overload
+    def create_brush(self, color):
         """ Если передать color = None, то должен вернуть кисть без заливки """
-        pass
+        ...
+
+    @overload
+    def create_brush(self, r, g, b): ...
+
+    def create_brush(self, *args, **kwargs):
+        raise NotImplemented("Must be implemented in subclass")
 
     @staticmethod
     def create_point(x, y) -> Point:
         pass
 
     @staticmethod
-    def create_rect(x, y, width, height) -> Rect:
+    def create_rect(x, y, w, h) -> Rect:
         pass
 
     def resize(self, width, height):

@@ -1,11 +1,11 @@
 # view.py                                                                                                               # надеюсь я правильно понимаю смысл View
-from controls.abstract.renderer import AbstractDynamicRenderer, Rect
+from controls.abstract.renderer import AbstractDynamicRenderer
 from controls.abstract.observer import AbstractObserver
 
 class AbstractView(AbstractObserver):
     """
     Абстрактные методы:\n
-    * update(self, item)
+    * update(self, item=None)
     * load(self, target, **kwargs)
     """
     def __init__(self, renderer: AbstractDynamicRenderer):
@@ -15,27 +15,28 @@ class AbstractView(AbstractObserver):
     def resize(self, width, height):
         """ Изменение размера """
         self._renderer.resize(width, height)
+        self.update()
 
     def reset(self):
         """ Сброс настроек """
         self._renderer.reset()
+        self.update()
 
     def zoom(self, dx, dy):
         """ Масштабирование """
         self._renderer.zoom(dx, dy)
+        self.update()
 
     def scroll(self, dx, dy):
         """ Прокрутка """
         self._renderer.scroll(dx, dy)
+        self.update()
 
     def render(self):
         """ Рендер """
-        if self._data:
-            self._renderer.set(self._data.const())
-            return self._renderer.render()
-        return None
+        return self._renderer.render()
 
-    def coordinates(self) -> (str, Rect):
+    def coordinates(self):
         """ Координаты элементов """
         for item in self._renderer.coordinates():
             yield item

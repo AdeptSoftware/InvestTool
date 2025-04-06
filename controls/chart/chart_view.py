@@ -1,12 +1,13 @@
 # chart_view.py
 from controls.abstract.source   import AbstractSource, SubscriptionType
 from controls.abstract.renderer import AbstractDynamicRenderer
+from controls.abstract.widget   import AbstractWidget
 from controls.abstract.view     import AbstractView
 
 
 class ChartView(AbstractView):
     """ Класс графика """
-    def __init__(self, parent, source: AbstractSource, renderer: AbstractDynamicRenderer):
+    def __init__(self, parent : AbstractWidget, source: AbstractSource, renderer: AbstractDynamicRenderer):
         assert (renderer is not None)
         assert (source   is not None)
         self._parent    = parent
@@ -24,14 +25,11 @@ class ChartView(AbstractView):
         self._source.attach(self, SubscriptionType.CANDLE, **kwargs["__attach"])
         self.reset()
 
-    def set_renderer(self, renderer):
-        """ Позволяет установить тип отрисовщика """
-        assert(renderer is not None)
-        self._renderer  = renderer                                                                                       # !!! Добавить копирование настроек
-
-    def update(self, item):
+    def update(self, item=None):
         """ Обновление содержимого графика """
-        if self._data:
-            self._data.update(item)
+        if self._data and self._parent.visible():
+            if item is not None:
+                self._data.update(item)
+            self._renderer.update(self._data)
             self._parent.update()
 

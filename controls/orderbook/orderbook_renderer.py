@@ -40,18 +40,17 @@ class OrderBookRenderer(AbstractDynamicRenderer):
 
         self.focused_item       = -1
 
-        self._items             = None                                                                                  # type: list[_OrderBookRendererItem]
+        self._items             = []                                                                                    # type: list[_OrderBookRendererItem]
         self._rect              = None                                                                                  # type: Rect
         self._max_scroll        = None
         self._center            = 0
-        self.update()
 
     def coordinates(self) -> (str, Rect):
         for item in self._items:
             yield str(item), item.rect
 
-    def update(self):
-        self._update(self._items)
+    def update(self, items):
+        self._set(items)
 
     def _update(self, items):
         self._rect                  = self._context.rect()
@@ -77,10 +76,10 @@ class OrderBookRenderer(AbstractDynamicRenderer):
             _min                   -= (self._max_scroll - self._center) - half
         #   print(f"y={self._scroll.y}, center={self._center}, min={_min}, max={_max} -> {items[0]}, {items[-1]}")
 
-        self._zoom_limits           = Limits(x_min=-100, x_max=20, y_min=0,    y_max=25)
-        self._scroll_limits         = Limits(x_min=0,    x_max=0,  y_min=_min, y_max=_max)
+        self._zoom   = Limits(x=self._zoom.x,   y=self._zoom.y,   x_min=-100, x_max=20, y_min=0,    y_max=25)
+        self._scroll = Limits(x=self._scroll.x, y=self._scroll.y, x_min=0,    x_max=0,  y_min=_min, y_max=_max)
 
-    def set(self, data):
+    def _set(self, data):
         assert (data is not None)
         assert (len(data) != 0)
         self._update(data)
@@ -105,7 +104,7 @@ class OrderBookRenderer(AbstractDynamicRenderer):
         index           = 0
         for item in data:
             txt         = (str(item.price), str(item.count))
-            w           = round(width * (item.count / max_count) * (1 - (self._zoom.x / self._zoom_limits.x_max)))
+            w           = round(width * (item.count / max_count) * (1 - (self._zoom.x / self._zoom.x_max)))
             x           = self._rect.left
             match item.type:
                 case OrderType.ASK:

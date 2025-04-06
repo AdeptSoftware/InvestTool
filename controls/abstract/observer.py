@@ -3,7 +3,7 @@
 class AbstractObserver:
     """
     Абстрактный класс наблюдателя, следящий за изменением данных\n
-    * update(self, item)
+    * update(self, item=None)
     * load(self, target, **kwargs)
     """
     def __init__(self, target=None):
@@ -18,6 +18,6 @@ class AbstractObserver:
         """ Загрузка данных, сохранение target """
         pass
 
-    def update(self, item):
+    def update(self, item=None):
         """ Произошло обновление данных """
         pass

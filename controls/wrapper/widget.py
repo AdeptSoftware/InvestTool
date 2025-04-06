@@ -4,8 +4,9 @@ from PyQt5.QtGui                            import QPainter, QWheelEvent, QKeyEv
 from PyQt5.QtCore                           import Qt, QPoint
 
 from controls.abstract.view                 import AbstractView
+from controls.abstract.widget               import AbstractWidget
 
-class AdeptWidget(QWidget):
+class AdeptWidget(QWidget, AbstractWidget):
     """
     Класс, реализующий базовые функции навигации и отрисовки графика\n
     Пример инициализации:\n
@@ -20,7 +21,7 @@ class AdeptWidget(QWidget):
         :param parent: родительское окно
         :param source: источник данных
         """
-        super().__init__(parent)
+        QWidget.__init__(self, parent)
         self._captured_position = None                                                                                  # type: QPoint
         self.view               = None                                                                                  # type: AbstractView
         # !!! К сожалению передать view нельзя в конструктор, т.к. QtContext надо проинициализированный QWidget-объект
@@ -47,8 +48,8 @@ class AdeptWidget(QWidget):
 
     # Логика масштабирования содержимого
 
-    def _zoom(self, event, condition):
-        factor = 1 + 2*(-1*int(condition))
+    def _zoom(self, event, condition, mult=1):
+        factor = (1 + 2*(-1*int(condition))) * mult
         if event.modifiers() & Qt.ShiftModifier:
             self.view.zoom(0, factor)
         else:
@@ -61,7 +62,7 @@ class AdeptWidget(QWidget):
     def keyPressEvent(self, event : QKeyEvent):
         key = event.key()
         if key in [Qt.Key_Plus, Qt.Key_Minus]:
-           self._zoom(event, key == Qt.Key_Minus)
+           self._zoom(event, key == Qt.Key_Minus, 5)
         elif key in [Qt.Key_Down, Qt.Key_Up, Qt.Key_Left, Qt.Key_Right]:
             x = -1 if key == Qt.Key_Right else 1 if key == Qt.Key_Left else 0
             y = -1 if key == Qt.Key_Down  else 1 if key == Qt.Key_Up   else 0
@@ -78,8 +79,11 @@ class AdeptWidget(QWidget):
             painter.end()
 
     def resizeEvent(self, event):
-        super().resizeEvent(event)
+        QWidget.resizeEvent(self, event)
         self.view.resize(self.width(), self.height())
 
     def update(self):
-        super().update()
+        QWidget.update(self)
+
+    def visible(self) -> bool:
+        return QWidget.isVisible(self)

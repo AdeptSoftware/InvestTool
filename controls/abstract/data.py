@@ -52,6 +52,18 @@ class AbstractData:
         """ Обновление данных по подписке """
         pass
 
+    def max_text_width(self, ctx):
+        """ Максимальная длина текста подписи по оси Y """
+        pass
+
+    def bounds(self):
+        """ Границы значений по оси Y """
+        pass
+
+    def range(self):
+        """ Диапазон значений по оси X """
+        pass
+
     def __len__(self):
         return len(self._data)
 

@@ -6,6 +6,7 @@ from controls.abstract.context  import AbstractContext
 from controls.wrapper.color     import Color
 from controls.wrapper.point     import Point
 from controls.wrapper.rect      import Rect
+from typing                     import overload
 
 class QtContext(AbstractContext):
     def __init__(self, parent):
@@ -19,23 +20,32 @@ class QtContext(AbstractContext):
     def create_color(r, g, b) -> Color:
         return Color(r, g, b)
 
-    @staticmethod
-    def create_pen(color, width):
-        return QPen(color, width)
+    def create_pen(self, *args, **kwargs):
+        if 1 <= len(args) <= 2:
+            return QPen(*args)
+        elif 3 <= len(args) <= 4:
+            width = (len(args) == 4 and args[3]) or 1
+            return QPen(QColor(args[0], args[1], args[2]), width)
+        else:
+            TypeError("Invalid arguments for create_pen")
 
-    @staticmethod
-    def create_brush(color):
-        if color is None:
-            return Qt.NoBrush
-        return QBrush(color)
+    def create_brush(self, *args, **kwargs):
+        if len(args) == 1:
+            if args[0] is None:
+                return Qt.NoBrush
+            return QBrush(*args)
+        elif len(args) == 3:
+            return QBrush(QColor(*args))
+        else:
+            TypeError("Invalid arguments for create_pen")
 
     @staticmethod
     def create_point(x, y) -> Point:
         return Point(x, y)
 
     @staticmethod
-    def create_rect(x, y, width, height) -> Rect:
-        return Rect(x, y, width, height)
+    def create_rect(x, y, w, h) -> Rect:
+        return Rect(x, y, w, h)
 
     def resize(self, width, height):
         self._pixmap.detach()

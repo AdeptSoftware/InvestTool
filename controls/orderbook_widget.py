@@ -28,7 +28,6 @@ class OrderBookWidget(AdeptWidget):
             for _, rect in self.view.coordinates():
                 if rect.top <= y <= rect.bottom:
                     self.view.set_focused_item(index)
-                    self.update()
                     return
                 index += 1
 

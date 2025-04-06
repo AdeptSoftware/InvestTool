@@ -18,6 +18,9 @@ class TOrderBookItem(AbstractItem):
     def __repr__(self):
         return f"[bid={self.type}] {self.price}: {self.count}"
 
+    def index(self):
+        return self.price
+
 class TOrderBookData(AbstractData):
     def __init__(self, data):
         """

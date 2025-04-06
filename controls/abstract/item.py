@@ -1,5 +1,6 @@
 # item.py
-from dataclasses import dataclass
+from dataclasses    import dataclass
+from typing         import Any
 
 @dataclass
 class AbstractItem:
@@ -8,8 +9,10 @@ class AbstractItem:
     * merge(self, item)
     * __repr__(self)
     """
-    pass
 
     def merge(self, item):
         """ Объединение данных """
+        pass
+
+    def index(self):
         pass
