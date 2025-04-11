@@ -25,11 +25,11 @@ class CandlestickLayout(AbstractLayout):
     def set_candles(self, items, width, rect, y_min, y_max):
         """
         Вычисление прямоугольных областей свечей
-        :param items: данные типа AbstractData
-        :param width: ширина одного item (с учетом масштаба и self.CANDLE_WIDTH) без self.CANDLE_GAP
-        :param rect:  область отрисовки данных
-        :param y_min: минимальное значение по оси Y
-        :param y_max: максимальное значение по оси Y
+        :param items:  данные типа AbstractData
+        :param width:  ширина одного item (с учетом масштаба и self.CANDLE_WIDTH) без self.CANDLE_GAP
+        :param rect:   область отрисовки данных
+        :param y_min:  минимальное значение по оси Y
+        :param y_max:  максимальное значение по оси Y
         """
         candles  = []
         x        = rect.right - (width // 2)

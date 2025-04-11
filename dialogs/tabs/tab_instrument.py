@@ -1,21 +1,21 @@
 # tab_instrument - вкладка с подробной информацией об инструментах
 from PyQt5.QtWidgets                import QWidget, QGridLayout, QLabel, QComboBox
-from PyQt5.QtCore                   import QByteArray, Qt
+from PyQt5.QtCore                   import QByteArray
 from PyQt5.QtGui                    import QPixmap, QIcon
-from clients.abstract_instrument    import AbstractInstrument
-from clients.abstract_client        import AbstractClient
-from controls.table_widget          import TableWidget
+from clients.abstract.instrument    import AbstractInstrument
+from classes.storage_manager        import StorageManager
+from controls.table_widget          import TableView, TableModel
 
 
 class TabInstrument(QWidget):
-    def __init__(self, client : AbstractClient):
+    def __init__(self, manager : StorageManager):
         super().__init__()
-        self._client   = client
+        self._manager  = manager
         self._tickers  = []
 
         self._label1   = QLabel()
         self._combobox = QComboBox()                                # Выпадающий список с инструментами
-        self._table    = TableWidget(self)                            # Таблица с информацией о инструменте
+        self._table    = TableView(self)                            # Таблица с информацией о инструменте
 
         self.init_controls()
         self.init_userinterface()
@@ -23,23 +23,23 @@ class TabInstrument(QWidget):
     def init_controls(self):
         self._label1.setText("Инструмент:")
 
-        self._combobox.currentIndexChanged.connect(self.refresh)    # type: ignore
+        self._combobox.currentIndexChanged.connect(self.refresh)                                                        # type: ignore
+        self._table.setSortingEnabled(True)
 
-        if self._client:
-            instruments = self._client.instruments()
-            if instruments:
-                self._tickers = []
-                for ticker, instrument in sorted(instruments.items()):
-                    self._tickers += [ ticker ]
-                    icon = instrument.icon()
-                    if icon is not None:
-                        pix = QPixmap()
-                        pix.loadFromData(QByteArray(icon))
-                        icon = QIcon(pix)
-                    else:
-                        icon = QIcon(QPixmap(160, 160))
-                    self._combobox.addItem(icon, f"{ticker}:\t{instrument.name}")
-                self.update_table(instruments[self._tickers[0]])
+        instruments = self._manager.client.instruments()
+        if instruments:
+            self._tickers = []
+            for ticker, instrument in sorted(instruments.items()):
+                self._tickers.append(ticker)
+                _bytes = instrument.icon()
+                if _bytes is not None:
+                    pix = QPixmap()
+                    pix.loadFromData(QByteArray(_bytes))
+                    icon = QIcon(pix)
+                else:
+                    icon = QIcon(QPixmap(160, 160))
+                self._combobox.addItem(icon, f"{ticker}:\t{instrument.name}")
+            self.update_table(instruments[self._tickers[0]])
 
     def init_userinterface(self):
         layout = QGridLayout()
@@ -63,12 +63,15 @@ class TabInstrument(QWidget):
         self.setLayout(layout)
 
     def update_table(self, instrument : AbstractInstrument):
-        self._table.a_remove_all_items()
-        self._table.a_add_items(instrument.properties())
-        self._table.a_update()
+        props = instrument.properties()
+        items = [list(props.keys()), list(props.values())]
+
+        heads = ["Наименование", "Значение"]
+        model = TableModel(heads, items)
+        self._table.setModel(model)
 
     def refresh(self):
         index = self._combobox.currentIndex()
         if index != -1:
-            instrument = self._client.instrument(self._tickers[index])
+            instrument = self._manager.client.instrument(self._tickers[index])
             self.update_table(instrument)

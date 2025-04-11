@@ -1,7 +1,7 @@
 # t_instrument.py
-from clients.abstract_instrument import AbstractInstrument, AbstractInterval
+from clients.abstract.instrument import AbstractInstrument
+from clients.abstract.interval   import AbstractInterval, IntervalIndex
 import requests
-import json
 import os
 
 class TInstrument(AbstractInstrument):
@@ -50,11 +50,16 @@ class TInstrument(AbstractInstrument):
                 _dict[field] = str(getattr(self._data, field))
         return _dict
 
-    def create_request_candles(self, interval: AbstractInterval, start, end):
-        """ Создает объект запроса для загрузки данных """
-        return {"instrument_id": self._data.uid, "interval": interval.value[3], "start": start, "end": end,
-                "__attach": {"interval": interval.value[4]}}
+    def candles(self, interval : AbstractInterval, start, end):
+        return self._client.upload_candles(
+            instrument_id   = self._data.uid,
+            interval        = interval.get(IntervalIndex.CANDLE_INTERVAL),
+            start           = start,
+            end             = end
+        )
 
-    def create_request_orderbook(self, depth=50):
-        """ Создает объект запроса для загрузки данных """
-        return {"instrument_id": self._data.uid, "depth": depth}
+    def orderbook(self, depth=50):
+        return self._client.upload_orderbook(
+            instrument_id   = self._data.uid,
+            depth           = depth
+        )

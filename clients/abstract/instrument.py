@@ -1,5 +1,6 @@
-# abstract_instrument.py
-from clients.abstract_client import AbstractInterval
+# instrument.py
+from clients.abstract.client    import AbstractClient
+from clients.abstract.interval  import AbstractInterval
 
 class AbstractInstrument:
     """ Абстрактный класс финансового инструмента """
@@ -22,10 +23,8 @@ class AbstractInstrument:
         """ Список доступных свойств для чтения """
         pass
 
-    def create_request_candles(self, interval: AbstractInterval, start, end):
-        """ Создает объект запроса для загрузки данных """
+    def candles(self, interval: AbstractInterval, start, end):
         pass
 
-    def create_request_orderbook(self, depth=50):
-        """ Создает объект запроса для загрузки данных """
+    def orderbook(self, depth=50):
         pass

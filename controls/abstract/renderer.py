@@ -1,9 +1,9 @@
 # renderer.py
+from controls.abstract.source   import AbstractSource
 from controls.abstract.context  import AbstractContext
 from controls.abstract.layout   import AbstractLayout
 from controls.utils.limits      import Limits
 from typing                     import List, TypeVar, Generic, Type, Optional
-from copy                       import deepcopy
 
 T = TypeVar('T')
 
@@ -11,15 +11,11 @@ class AbstractStaticRenderer(Generic[T]):
     """
     Класс статического отрисовщика\n
     * coordinates(self)
-    * update(self, items)
+    * update(self, source: AbstractDataSource)
     """
     def __init__(self, ctx: AbstractContext):
-        self._context       = ctx
-        self._layouts       = []                                                                                        # type: List[AbstractLayout]
-
-    @property
-    def layouts(self) -> List[AbstractLayout]:
-        return self._layouts
+        self._context = ctx
+        self._layouts = []                                                                                              # type: List[AbstractLayout]
 
     def __getitem__(self, _type: Type[T]) -> Optional[T]:
         for layout in self._layouts:
@@ -41,7 +37,7 @@ class AbstractStaticRenderer(Generic[T]):
         """ Координаты основных элементов """
         pass
 
-    def update(self, items):
+    def update(self, source: AbstractSource):
         """ Обновление дескрипторов и слоев """
         pass
 
@@ -50,7 +46,7 @@ class AbstractDynamicRenderer(AbstractStaticRenderer):
     """
     Класс динамического отрисовщика (масштабирование, прокрутка)\n
     * coordinates(self)
-    * update(self, items)
+    * update(self, source: AbstractDataSource)
     """
     def __init__(self, ctx: AbstractContext):
         self._zoom   = Limits(0, 0)

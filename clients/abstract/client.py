@@ -1,22 +1,38 @@
-# abstract_client.py
-from controls.abstract.source       import AbstractSource, AbstractObserver, AbstractInterval, SubscriptionType
-from clients.abstract_instrument    import AbstractInstrument
+# client.py
+from enum import Enum
 
-class AbstractClient(AbstractSource):
+
+class SubscriptionType(Enum):
+    CANDLE      = 0
+    ORDERBOOK   = 1
+    LAST_PRICE  = 2
+
+
+class AbstractClient:
     """ Абстрактный класс клиента с API сервера с котировками и прочим """
+    CANDLE_ITEM_TYPE = None
+    CANDLE_DATA_TYPE = None
+
     def disconnect(self):
         """ Отключение от сервера """
         pass
 
     def connect(self):
+        """ Подключение к серверу """
+        pass
+
+    def reconnect(self):
         """ Переподключение к серверу """
         pass
 
-    def attach(self, observer: AbstractObserver, _type : SubscriptionType):
+    def name(self):
+        pass
+
+    def attach(self, callback, _id, _type : SubscriptionType, **kwargs):
         """ Добавить наблюдателя для подписки на событие обновления данных """
         pass
 
-    def detach(self, observer: AbstractObserver, _type : SubscriptionType):
+    def detach(self, callback, _id, _type : SubscriptionType):
         """ Удалить наблюдателя из подписок на событие обновления данных """
         pass
 
@@ -28,7 +44,7 @@ class AbstractClient(AbstractSource):
         """
         pass
 
-    def instrument(self, ticker) -> AbstractInstrument:
+    def instrument(self, ticker):
         """
         Возвращает инструмент
         :param ticker: код инструмента

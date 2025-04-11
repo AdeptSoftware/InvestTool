@@ -1,6 +1,7 @@
 # orderbook_renderer.py
 from controls.abstract.renderer import AbstractDynamicRenderer, Limits
 from controls.abstract.context  import AbstractContext, Rect, Color
+from controls.abstract.source   import AbstractSource
 from dataclasses                import dataclass
 from enum                       import Enum
 import math
@@ -22,7 +23,7 @@ class OrderBookRenderer(AbstractDynamicRenderer):
     def __init__(self, ctx : AbstractContext):
         self.P_DEFAULT_ZOOM_Y   = 2
         super().__init__(ctx)
-        ctx.set_font("Arial", 10)
+        ctx.set_font(ctx.create_font("Arial", 10))
 
         self.P_GAP_HEIGHT       = 0
         self.P_BORDER_WIDTH     = 1
@@ -49,8 +50,8 @@ class OrderBookRenderer(AbstractDynamicRenderer):
         for item in self._items:
             yield str(item), item.rect
 
-    def update(self, items):
-        self._set(items)
+    def update(self, source : AbstractSource):
+        self._set(source.orderbook(), source.last_price())
 
     def _update(self, items):
         self._rect                  = self._context.rect()
@@ -79,16 +80,17 @@ class OrderBookRenderer(AbstractDynamicRenderer):
         self._zoom   = Limits(x=self._zoom.x,   y=self._zoom.y,   x_min=-100, x_max=20, y_min=0,    y_max=25)
         self._scroll = Limits(x=self._scroll.x, y=self._scroll.y, x_min=0,    x_max=0,  y_min=_min, y_max=_max)
 
-    def _set(self, data):
-        assert (data is not None)
-        assert (len(data) != 0)
-        self._update(data)
+    def _set(self, orderbook, last_price):
+        assert (orderbook is not None)
+        if len(orderbook) == 0:
+            return
+        self._update(orderbook)
         # Определим некоторые вспомогательные данные
         max_count   = 1
         ask_count   = 0
         bid_count   = 0
         sum_count   = 0
-        for item in data:
+        for item in orderbook:
             max_count = max(item.count, max_count)
             match item.type:
                 case OrderType.ASK:
@@ -102,7 +104,7 @@ class OrderBookRenderer(AbstractDynamicRenderer):
         width           = self._rect.width
         self._items     = []
         index           = 0
-        for item in data:
+        for item in orderbook:
             txt         = (str(item.price), str(item.count))
             w           = round(width * (item.count / max_count) * (1 - (self._zoom.x / self._zoom.x_max)))
             x           = self._rect.left
@@ -113,7 +115,7 @@ class OrderBookRenderer(AbstractDynamicRenderer):
                     w   = width
                     v1  = round((ask_count / sum_count) * 100, 1)
                     v2  = round((bid_count / sum_count) * 100, 1)
-                    txt = (f"{v1}%", f"{v2}%", str(data.last_price))
+                    txt = (f"{v1}%", f"{v2}%", str(last_price))
             self._items += [_OrderBookRendererItem(
                 text    = txt,
                 rect    = self._context.create_rect(self._rect.left, top, width, self._item_height),

@@ -1,6 +1,7 @@
 # t_orderbook_data.py
 from clients.TBank.t_quotation              import TQuotation
-from controls.abstract.data                 import AbstractData, AbstractItem
+from controls.abstract.data                 import AbstractData
+from controls.abstract.item                 import AbstractItem
 from controls.orderbook.orderbook_renderer  import OrderType
 from dataclasses                            import dataclass
 
@@ -21,42 +22,40 @@ class TOrderBookItem(AbstractItem):
     def index(self):
         return self.price
 
+    def value(self):
+        return self.count
+
+    @staticmethod
+    def restore(obj):
+        return None
+
+    def backup(self):
+        return None
+
+
 class TOrderBookData(AbstractData):
-    def __init__(self, data):
-        """
-        Конструктор класса
-        :param data: данные для инициализации
-        """
-        _data = []
+    @staticmethod
+    def wrap(raw_data):
+        items = []
         # Продажи
-        for item in data.asks:
-            _data     +=[TOrderBookItem(
+        for item in raw_data.asks:
+            items += [ TOrderBookItem(
                 _price = item.price,
                 _count = item.quantity,
                 _type  = OrderType.ASK
             )]
-        _data.reverse()
+        items.reverse()
         # Пустой элемент
-        _data         +=[TOrderBookItem(
-                _price = 0,
-                _count = 0,
-                _type  = OrderType.SEP
+        items += [ TOrderBookItem(
+            _price = 0,
+            _count = 0,
+            _type  = OrderType.SEP
         )]
         # Покупки
-        for item in data.bids:
-            _data     +=[TOrderBookItem(
+        for item in raw_data.bids:
+            items += [ TOrderBookItem(
                 _price = TQuotation(item.price),
                 _count = item.quantity,
                 _type  = OrderType.BID
             )]
-        super().__init__(_data)
-        self.last_price = (hasattr(data, "last_price") and TQuotation(data.last_price)) or None
-
-    def update(self, item: TOrderBookItem):
-        """
-        Обновление данных по подписке
-        :param item: новый последняя цена сделки
-        """
-        assert (not self._readonly)
-        assert (item is not None)
-        self._data += [ item ]
+        return items

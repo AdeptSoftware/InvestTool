@@ -1,43 +1,86 @@
 from PyQt5.QtWidgets import QTableView, QHeaderView
 from PyQt5.QtCore    import QAbstractTableModel, Qt
+from PyQt5.QtGui     import QColor
 from enum            import Enum, IntEnum
 
-class ColumnType(IntEnum):
-    NAME     = 0,
-    CONTENT  = 1
+class TableModel(QAbstractTableModel):
+    def __init__(self, headers, data, txt_colors=None, bkg_colors=None):
+        super().__init__()
+        self._data          = data
+        self._headers       = headers
+        self._txt_colors    = txt_colors
+        self._bkg_colors    = bkg_colors
 
-class _TableModel(QAbstractTableModel):
-    def __init__(self, data):
-        super(_TableModel, self).__init__()
-        self._headers = ("Название", "Значение")
-        self._data = data
-
-    def data(self, index, role = ...):
-        if role == Qt.DisplayRole:
-            key = list(self._data.keys())[index.row()]
-            if index.column() == 0:
-                return key
-            return self._data[key]
-
-    def rowCount(self, parent = ...):
-        return len(self._data)
-
-    def columnCount(self, parent = ...):
+    def rowCount(self, parent=None):
         if self._data:
-            return len(self._headers)
+            return len(self._data[0])
         return 0
 
-    def headerData(self, section, orientation, role = ...):
+    def columnCount(self, parent=None):
+        return len(self._headers)
+
+    def data(self, index, role=None):
+        if not index.isValid():
+            return None
+
+        row, col = index.row(), index.column()
+        if col >= len(self._data):
+            return None
+
+        match role:
+            case Qt.DisplayRole:
+                return self._data[col][row]
+            case Qt.ForegroundRole:
+                if self._txt_colors:
+                    return QColor(self._txt_colors[col][row])
+            case Qt.BackgroundRole:
+                if self._bkg_colors:
+                    return QColor(self._bkg_colors[col][row])
+        return None
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role != Qt.DisplayRole:
             return None
-        if orientation == Qt.Horizontal:
-            return self._headers[section]
+
+        match orientation:
+            case Qt.Horizontal:
+                if section < len(self._headers):
+                    return self._headers[section]
         return f"{section}"
 
-class TableWidget(QTableView):
+    def sort(self, column, order=None):
+        if self._data:
+            self.layoutAboutToBeChanged.emit()
+
+            empty = []
+            if not self._txt_colors or not self._bkg_colors:
+                for i in range(len(self._data)):
+                    empty += [[0]*len(self._data[i])]
+
+            p = [ list(zip(*self._data)),
+                  list(zip(*(self._txt_colors or empty))),
+                  list(zip(*(self._bkg_colors or empty))) ]
+
+            combined = list(zip(*p))
+            combined.sort(
+                key=lambda x: x[0][column] if column < len(x[0]) else "",
+                reverse=(order == Qt.DescendingOrder),
+            )
+
+            index = 0
+            for _list in zip(*combined):
+                p[index] = [ list(col) for col in zip(*_list) ]
+                index += 1
+
+            self._data       = p[0]
+            self._txt_colors = (self._txt_colors and p[1]) or self._txt_colors
+            self._bkg_colors = (self._bkg_colors and p[2]) or self._bkg_colors
+
+            self.layoutChanged.emit()
+
+class TableView(QTableView):
     def __init__(self, parent):
         super().__init__(parent)
-        self._data  = {}
         self.setStyleSheet("""
             QHeaderView::section
             {
@@ -58,23 +101,9 @@ class TableWidget(QTableView):
             }
             """)
 
-        model = _TableModel(self._data)
-
         header = self.verticalHeader()
         header.setDefaultSectionSize(10)
         header.setVisible(False)
 
         header = self.horizontalHeader()
         header.setStretchLastSection(True)
-
-        self.setModel(model)
-
-    def a_update(self):
-        self.setModel(_TableModel(self._data))
-
-    def a_remove_all_items(self):
-        self._data  = {}
-        self.a_update()
-
-    def a_add_items(self, items):
-        self._data.update(items)

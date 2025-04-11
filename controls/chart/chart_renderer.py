@@ -1,12 +1,12 @@
 # chart_renderer.py
-import datetime
-
 from controls.abstract.renderer         import AbstractDynamicRenderer, Limits
+from controls.abstract.source           import AbstractSource
 from controls.abstract.context          import AbstractContext
 
 from controls.chart.layout.background   import BackgroundLayout
 from controls.chart.layout.grid         import GridLayout
 from controls.chart.layout.candlestick  import CandlestickLayout
+from controls.chart.layout.change       import ChangeLayout
 
 import math
 import sys
@@ -16,13 +16,14 @@ class ChartRenderer(AbstractDynamicRenderer):
         self.RENDERER_BORDER_WIDTH   = 5
         self.RENDERER_TEXT_GAP       = 3
         self.RENDERER_EQUAL_MODIFIER = 0.05
-        ctx.set_font("Arial", 10)
+        ctx.set_font(ctx.create_font("Arial", 10))
         super().__init__(ctx)
 
         self._layouts += [
             BackgroundLayout(ctx),
             GridLayout(ctx),
-            CandlestickLayout(ctx)
+            CandlestickLayout(ctx),
+            ChangeLayout(ctx)
         ]
         self[GridLayout].index2str = lambda x: x.strftime("%H:%M")
 
@@ -30,7 +31,12 @@ class ChartRenderer(AbstractDynamicRenderer):
         for candle in self[CandlestickLayout].candles:
             yield str(candle["item"]), candle["body"]
 
-    def update(self, items):
+    def update(self, source: AbstractSource):
+        items = source.candlestick()
+        if items:
+            self._update(items)
+
+    def _update(self, items):
         """ Обновление дескрипторов и слоев """
         rect   = self._context.rect()
         item_width    = self[CandlestickLayout].CANDLE_WIDTH + self._zoom.x
@@ -67,6 +73,7 @@ class ChartRenderer(AbstractDynamicRenderer):
         self[GridLayout].set_vertical_lines(_items, element_width, rect)
         self[GridLayout].set_horizontal_lines(y_min, y_max, count, rect)
         self[CandlestickLayout].set_candles(_items, item_width, rect, y_min, y_max)
+        self[ChangeLayout].update(items, -last, -first)
         # Обновим данные о граничных условиях масштабирования и перемешения
         x_min        = 1 - self[CandlestickLayout].CANDLE_WIDTH
         x_max        = rect.width // self[GridLayout].TICK_INTERVAL

@@ -1,12 +1,12 @@
 # widget.py
 from PyQt5.QtWidgets                        import QWidget
-from PyQt5.QtGui                            import QPainter, QWheelEvent, QKeyEvent, QPixmap
+from PyQt5.QtGui                            import QPainter, QWheelEvent, QKeyEvent, QShowEvent, QPixmap
 from PyQt5.QtCore                           import Qt, QPoint
 
 from controls.abstract.view                 import AbstractView
 from controls.abstract.widget               import AbstractWidget
 
-class AdeptWidget(QWidget, AbstractWidget):
+class BaseWidget(QWidget, AbstractWidget):
     """
     Класс, реализующий базовые функции навигации и отрисовки графика\n
     Пример инициализации:\n
@@ -15,7 +15,7 @@ class AdeptWidget(QWidget, AbstractWidget):
         super().__init__(parent)\n
         self.view = ChartView(self, source, CandlestickRenderer(QtContext(self)))
     """
-    def __init__(self, parent):
+    def __init__(self, parent: QWidget):
         """
         Конструктор класса виджета графика
         :param parent: родительское окно
@@ -78,12 +78,21 @@ class AdeptWidget(QWidget, AbstractWidget):
             painter.drawPixmap(pixmap.rect(), pixmap)
             painter.end()
 
+    # Прочее
+
     def resizeEvent(self, event):
         QWidget.resizeEvent(self, event)
         self.view.resize(self.width(), self.height())
+        self.update()
 
     def update(self):
+        self.view.update()
         QWidget.update(self)
 
     def visible(self) -> bool:
         return QWidget.isVisible(self)
+
+    def showEvent(self, event: QShowEvent):
+        if QWidget.isVisible(self):
+            self.view.update()
+        super().showEvent(event)

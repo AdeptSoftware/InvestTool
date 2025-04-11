@@ -4,7 +4,8 @@ __pycache__
 clients\unused
 icons
 examples
+data
 
-token.ini
 example.py
+token.ini
 

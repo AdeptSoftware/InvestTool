@@ -29,7 +29,7 @@ class GridLayout(AbstractLayout):
         x        = rect.right - (width // 2)
         u        = rect.bottom + self._context.text_height() + self.TICK_GAP
         for item in items[::self.TICK_INTERVAL]:
-            text = self.index2str(item.index())
+            text = self.index2str(item.index)
             size = self._context.text_width(text)
             lines += [{
                 "x":        x,                                          # x1 и x2 вертикальной линии сетки

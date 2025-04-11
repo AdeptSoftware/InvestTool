@@ -1,18 +1,32 @@
 # item.py
-from dataclasses    import dataclass
-from typing         import Any
+from dataclasses import dataclass
 
 @dataclass
 class AbstractItem:
     """
     Абстрактный класс элемента данных\n
-    * merge(self, item)
     * __repr__(self)
+    * restore(**kwargs)
+    * backup()
+    * index(self)
+    * value(self)
     """
 
-    def merge(self, item):
-        """ Объединение данных """
+    @staticmethod
+    def restore(data):
         pass
 
-    def index(self):
+    def backup(self):
         pass
+
+    @staticmethod
+    def size():
+        pass
+
+    @property
+    def index(self):
+        return
+
+    @property
+    def value(self):
+        return

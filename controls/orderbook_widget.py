@@ -1,24 +1,17 @@
 # orderbook_widget.py
 from controls.orderbook.orderbook_view      import OrderBookView
 from controls.orderbook.orderbook_renderer  import OrderBookRenderer
-from controls.abstract.source               import AbstractSource
 
-from controls.wrapper.widget                import AdeptWidget
+from controls.wrapper.widget                import BaseWidget
 from controls.wrapper.context               import QtContext
 
-from PyQt5.QtWidgets                        import QMenu
+from PyQt5.QtWidgets                        import QWidget, QMenu
 
-class OrderBookWidget(AdeptWidget):
+class OrderBookWidget(BaseWidget):
     """ Класс виджета стопки """
-
-    def __init__(self, parent, source: AbstractSource):
-        """
-        Конструктор класса виджета графика
-        :param parent: родительское окно
-        :param source: источник данных
-        """
+    def __init__(self, parent: QWidget):
         super().__init__(parent)
-        self.view = OrderBookView(self, source, OrderBookRenderer(QtContext(self)))
+        self.view = OrderBookView(self, OrderBookRenderer(QtContext(self)))
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
@@ -28,6 +21,7 @@ class OrderBookWidget(AdeptWidget):
             for _, rect in self.view.coordinates():
                 if rect.top <= y <= rect.bottom:
                     self.view.set_focused_item(index)
+                    self.update()
                     return
                 index += 1
 
@@ -39,5 +33,9 @@ class OrderBookWidget(AdeptWidget):
     def contextMenuEvent(self, event):
         menu    = QMenu()
         action1 = menu.addAction("Сбросить")
-        action1.triggered.connect(self.view.reset)
+        action1.triggered.connect(self._reset)
         menu.exec(event.globalPos())
+
+    def _reset(self):
+        self.view.reset()
+        self.update()

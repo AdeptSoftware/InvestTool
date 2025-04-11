@@ -47,6 +47,12 @@ class QtContext(AbstractContext):
     def create_rect(x, y, w, h) -> Rect:
         return Rect(x, y, w, h)
 
+    @staticmethod
+    def create_font(family, size, bold=False, italic=False):
+        font = QFont(family, size, italic=italic)
+        font.setBold(bold)
+        return font
+
     def resize(self, width, height):
         self._pixmap.detach()
         self._pixmap = QPixmap(width, height)
@@ -58,14 +64,18 @@ class QtContext(AbstractContext):
 
     def end(self):
         self._painter.end()
+        self._painter = None
         return self._pixmap
 
     def rect(self) -> Rect:
         return Rect(self._parent.rect())
 
-    def set_font(self, family, size):
-        self._font      = QFont(family, size)
-        self._metrics   = QFontMetrics(self._font)
+    def set_font(self, font):
+        self._font, font = font, self._font
+        self._metrics    = QFontMetrics(self._font)
+        if self._painter:
+            self._painter.setFont(self._font)
+        return font
 
     def text_height(self):
         return self._metrics.height()

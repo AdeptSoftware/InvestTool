@@ -1,25 +1,29 @@
 # tab_main - вкладка с информацией о курсе инструмента
-from PyQt5.QtWidgets            import QWidget, QGridLayout, QLabel, QComboBox
-from PyQt5.QtCore               import QByteArray, Qt
-from PyQt5.QtGui                import QPixmap, QIcon
-from clients.abstract_client    import AbstractClient
-import datetime
+from PyQt5.QtWidgets             import QWidget, QGridLayout, QLabel, QComboBox
+from PyQt5.QtCore                import QByteArray
+from PyQt5.QtGui                 import QPixmap, QIcon
 
-from controls.orderbook_widget  import OrderBookWidget
-from controls.chart_widget      import ChartWidget
+from classes.storage_manager     import StorageManager, Storage
+
+from clients.abstract.client     import SubscriptionType
+from clients.abstract.interval   import IntervalIndex
+from clients.abstract.instrument import AbstractInstrument
+
+from controls.orderbook_widget   import OrderBookWidget
+from controls.chart_widget       import ChartWidget
 
 class TabPrice(QWidget):
-    def __init__(self, client : AbstractClient):
+    def __init__(self, manager : StorageManager):
         super().__init__()
-        self._client            = client
+        self._manager           = manager
         self._tickers           = []
 
         self._label1            = QLabel()
         self._label2            = QLabel()
         self._combobox_ticker   = QComboBox()
         self._combobox_interval = QComboBox()
-        self._chart             = ChartWidget(self, client)
-        self._orderbook         = OrderBookWidget(self, client)
+        self._chart             = ChartWidget(self)
+        self._orderbook         = OrderBookWidget(self)
 
         self.init_controls()
         self.init_userinterface()
@@ -33,24 +37,23 @@ class TabPrice(QWidget):
         self._combobox_ticker.currentIndexChanged.connect(self.refresh)         # type: ignore
         self._combobox_interval.currentIndexChanged.connect(self.refresh)       # type: ignore
 
-        if self._client:
-            items = [ e.value[1] for e in self._client.intervals() ]
-            self._combobox_interval.addItems(items)
+        items = [ e.get(IntervalIndex.DESCRIPTION) for e in self._manager.client.intervals() ]
+        self._combobox_interval.addItems(items)
 
-            instruments = self._client.instruments()
-            if instruments:
-                self._tickers = []
-                for ticker, instrument in sorted(instruments.items()):
-                    self._tickers += [ ticker ]
-                    icon = instrument.icon()
-                    if icon is not None:
-                        pix = QPixmap()
-                        pix.loadFromData(QByteArray(icon))
-                        icon = QIcon(pix)
-                    else:
-                        icon = QIcon(QPixmap(160, 160))
-                    self._combobox_ticker.addItem(icon, f"{ticker}:\t{instrument.name}")
-                self.change_instrument(self._tickers[0], True)
+        instruments = self._manager.client.instruments()
+        if instruments:
+            self._tickers = []
+            for ticker, instrument in sorted(instruments.items()):
+                self._tickers.append(ticker)
+                _bytes = instrument.icon()
+                if _bytes is not None:
+                    pix = QPixmap()
+                    pix.loadFromData(QByteArray(_bytes))
+                    icon = QIcon(pix)
+                else:
+                    icon = QIcon(QPixmap(160, 160))
+                self._combobox_ticker.addItem(icon, f"{ticker}:\t{instrument.name}")
+            self.change_instrument(self._tickers[0], True)
 
         self._combobox_ticker.setCurrentIndex(136)
         self._combobox_interval.setCurrentIndex(0)
@@ -83,23 +86,28 @@ class TabPrice(QWidget):
     def change_instrument(self, ticker, init=False):
         index = self._combobox_interval.currentIndex()
         if index != -1:
-            instrument  = self._client.instrument(ticker)
+            source : Storage = self._chart.view.source
+            if source:
+                source.detach(self._chart.update,     SubscriptionType.CANDLE)
+                source.detach(self._orderbook.update, SubscriptionType.ORDERBOOK)
+                source.detach(self._orderbook.update, SubscriptionType.LAST_PRICE)
 
-            interval    = list(self._client.intervals())[index]
-            end         = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=10)
-            start       = end - interval.value[2]
+            source = self._manager.get(ticker)
+            if source:
+                self._chart.view.source = source
+                self._chart.view.reset()
+                self._chart.update()
 
-            request     = instrument.create_request_candles(interval, start, end)
-            self._chart.view.load(instrument, **request)
-            self._chart.update()
+                self._orderbook.view.source = source
+                self._orderbook.view.reset()
+                self._orderbook.update()
 
-            request     = instrument.create_request_orderbook()
-            self._orderbook.view.load(instrument, **request)
-            self._orderbook.update()
+                source.attach(self._chart.update,     SubscriptionType.CANDLE)
+                source.attach(self._orderbook.update, SubscriptionType.ORDERBOOK)
+                source.attach(self._orderbook.update, SubscriptionType.LAST_PRICE)
 
-            if not init:
-                self._client.disconnect()
-                self._client.connect()
+                if not init:
+                    self._manager.client.reconnect()
 
     def refresh(self):
         index = self._combobox_ticker.currentIndex()

@@ -1,12 +1,12 @@
 # tab_main - вкладка с информацией об определенном инструменте
 from PyQt5.QtWidgets            import QWidget, QGridLayout
-from clients.abstract_client    import AbstractClient
+from classes.storage_manager    import StorageManager
 
 
 class TabMain(QWidget):
-    def __init__(self, client : AbstractClient):
+    def __init__(self, manager : StorageManager):
         super().__init__()
-        self._client = client
+        self._manager = manager
 
         self.init_controls()
         self.init_userinterface()

@@ -1,49 +1,31 @@
 # tab_dynamics - вкладка с анализом динамики рынка
+
 from PyQt5.QtWidgets            import QWidget, QGridLayout, QLabel, QComboBox, QPushButton
-from clients.abstract_client    import AbstractClient
-from controls.table_widget        import TableWidget
-from enum                       import Enum
+from classes.storage_manager    import StorageManager
+from controls.table_widget      import TableView, TableModel
+from clients.abstract.interval  import AbstractInterval, IntervalIndex
+import datetime
+import asyncio
+import sys
 
-class EnumTuple(Enum):
-    @classmethod
-    def cast(cls, index):
-        for item in cls:
-            if item.value[0] == index:
-                return item
-        raise ValueError(f"Элемента {cls.__name__} с индексом {index} не существует!")
 
-class EnumIntervals(EnumTuple):
-    i30S    = (0,  "30c")
-    i1M     = (1,  "1м")
-    i5M     = (2,  "5м")
-    i10M    = (3,  "10м")
-    i30M    = (4,  "30м")
-    i1H     = (5,  "1ч")
-    i3H     = (6,  "3ч")
-    i6H     = (7,  "6ч")
-    i12H    = (8,  "12ч")
-    i1D     = (9,  "1д")
-    i7D     = (10, "7д")
-    i30D    = (11, "30д")
-    i365D   = (12, "365д")
-
-class EnumCandles(EnumTuple):
-    i5      = (0, 5,  "5 шт")
-    i10     = (1, 10, "10 шт")
-    i15     = (2, 15, "15 шт")
-    i30     = (3, 30, "30 шт")
-    ALL     = (4, 0,  "Все")
+class EnumCandles(AbstractInterval):
+    i5      = (0, "5 шт",  5)
+    i10     = (1, "10 шт", 10)
+    i15     = (2, "15 шт", 15)
+    i30     = (3, "30 шт", 30)
+    ALL     = (4, "Все",   sys.maxsize)
 
 class TabDynamics(QWidget):
-    def __init__(self, client : AbstractClient):
+    def __init__(self, manager : StorageManager):
         super().__init__()
-        self._client    = client
+        self._manager   = manager
 
         self._label1    = QLabel()
         self._combobox1 = QComboBox()                           # Временной промежуток
         self._combobox2 = QComboBox()                           # Количество свечей
         self._button    = QPushButton()                         # Кнопка обновления результатов
-        self._table     = TableWidget(self)                       # Список
+        self._table     = TableView(self)                       # Таблица
 
         self.init_controls()
         self.init_userinterface()
@@ -51,15 +33,16 @@ class TabDynamics(QWidget):
     def init_controls(self):
         self._button.setText("Обновить")
         self._label1.setText("Временной промежуток:")
-        self._combobox1.addItems([e.value[1] for e in EnumIntervals])
-        self._combobox2.addItems([e.value[2] for e in EnumCandles])
-        self._combobox1.setCurrentIndex(4)
-        self._combobox2.setCurrentIndex(3)
+        self._combobox1.addItems([e.get(IntervalIndex.DESCRIPTION) for e in self._manager.client.intervals()])
+        self._combobox2.addItems([e.get(IntervalIndex.DESCRIPTION) for e in EnumCandles])
+        self._combobox1.setCurrentIndex(10)
+        self._combobox2.setCurrentIndex(4)
 
-        self._combobox1.view().pressed.connect(self.refresh)    # type: ignore
-        self._combobox2.view().pressed.connect(self.refresh)    # type: ignore
-        self._button.pressed.connect(self.refresh)              # type: ignore
+        self._combobox1.view().pressed.connect(self.refresh)                                                            # type: ignore
+        self._combobox2.view().pressed.connect(self.refresh)                                                            # type: ignore
+        self._button.pressed.connect(self.refresh)                                                                      # type: ignore
 
+        self._table.setSortingEnabled(True)
         self.refresh()
 
     def init_userinterface(self):
@@ -87,11 +70,38 @@ class TabDynamics(QWidget):
         layout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(layout)
 
-    def refresh(self):
-        interval = EnumIntervals.cast(self._combobox1.currentIndex())
-        count    = EnumCandles.cast(self._combobox2.currentIndex()).value[1]
+    def update_table(self, items, colors):
+        heads = ["Наименование", "Значение"]
+        model = TableModel(heads, items, colors)
+        self._table.setModel(model)
 
-        # data     = self._api.tickers(interval, count)
-        pass
+
+    def refresh(self):
+        async def _load(_instrument, _interval, _start, _end):
+            data = _instrument.candles(interval, start, end)
+            print(f"load: {_instrument.ticker}")
+            return _instrument, data
+
+        async def _run():
+            tasks = []
+            instruments = self._client.instruments(buy_available=False)
+            for ticker in instruments:
+                tasks += [_load(instruments[ticker], interval, start, end)]
+                break
+            return await asyncio.gather(*tasks)
+
+
+        #interval    = self._client.intervals().cast(self._combobox1.currentIndex())
+        #count       = EnumCandles.cast(self._combobox2.currentIndex()).get(IntervalIndex.COUNT)
+
+        #end         = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=10)
+        #start       = end - datetime.timedelta(minutes=min(1440, count))
+
+        #items       = asyncio.run(_run())
+
+
+
+        #colors      = None
+        #self.update_table(items, colors)
 
 

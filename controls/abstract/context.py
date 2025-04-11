@@ -131,6 +131,10 @@ class AbstractContext:
     def create_rect(x, y, w, h) -> Rect:
         pass
 
+    @staticmethod
+    def create_font(family, size, bold=False, italic=False):
+        pass
+
     def resize(self, width, height):
         pass
 
@@ -144,7 +148,7 @@ class AbstractContext:
     def rect(self) -> Rect:
         pass
 
-    def set_font(self, family, size):
+    def set_font(self, font):
         pass
 
     def set_brush(self, brush):
