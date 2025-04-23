@@ -1,11 +1,10 @@
 .idea
+.test
 .venv
 __pycache__
-clients\unused
+clients/unused
 icons
-examples
 data
 
-example.py
 token.ini
 

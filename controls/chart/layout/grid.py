@@ -95,7 +95,7 @@ class GridLayout(AbstractLayout):
         return [line for line in lines if line["show"]]
 
 
-    def render(self):
+    def render(self, renderer):
         self._context.set_pen(self.LINE_PEN)
         for line in self._vertical_lines:
             self._context.draw_line(line["x"], line["y1"], line["x"], line["y2"])

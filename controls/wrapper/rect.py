@@ -29,19 +29,19 @@ class Rect(_QRect, _ARect):
 
     @left.setter
     def left(self, value):
-        super().setLeft(value)
+        super().moveLeft(value)
 
     @top.setter
     def top(self, value):
-        super().setTop(value)
+        super().moveTop(value)
 
     @right.setter
     def right(self, value):
-        super().setRight(value)
+        super().moveRight(value)
 
     @bottom.setter
     def bottom(self, value):
-        super().setBottom(value)
+        super().moveBottom(value)
 
     @width.setter
     def width(self, value):
@@ -51,5 +51,14 @@ class Rect(_QRect, _ARect):
     def height(self, value):
         super().setHeight(value)
 
-    def adjusted(self, x1, y1, x2, y2):
+    def adjusted(self, x1, y1, x2, y2) -> "Rect":
         return Rect(super().adjusted(x1, y1, x2, y2))
+
+    def contain(self, x, y):
+        return super().contains(x, y)
+
+    def intersect(self, rect):
+        return super().intersects(rect)
+
+    def __copy__(self):
+        return Rect(*super().getRect())

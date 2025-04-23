@@ -6,20 +6,12 @@ from PyQt5.QtCore                           import Qt, QPoint
 from controls.abstract.view                 import AbstractView
 from controls.abstract.widget               import AbstractWidget
 
-class BaseWidget(QWidget, AbstractWidget):
-    """
-    Класс, реализующий базовые функции навигации и отрисовки графика\n
-    Пример инициализации:\n
-    class SomeWidget(AdeptWidget)\n
-    def __init__(self, parent, source : AbstractSource):\n
-        super().__init__(parent)\n
-        self.view = ChartView(self, source, CandlestickRenderer(QtContext(self)))
-    """
+class Widget(QWidget, AbstractWidget):
+    """ Класс, реализующий базовые функции навигации и отрисовки графика """
     def __init__(self, parent: QWidget):
         """
         Конструктор класса виджета графика
         :param parent: родительское окно
-        :param source: источник данных
         """
         QWidget.__init__(self, parent)
         self._captured_position = None                                                                                  # type: QPoint
@@ -44,7 +36,12 @@ class BaseWidget(QWidget, AbstractWidget):
             offset = event.pos() - self._captured_position
             self.view.scroll(offset.x(), offset.y())
             self._captured_position = event.pos()
-            self.update()
+            self.view.update()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.view.set_focused_item(-1)
+        self.view.update()
 
     # Логика масштабирования содержимого
 
@@ -54,7 +51,7 @@ class BaseWidget(QWidget, AbstractWidget):
             self.view.zoom(0, factor)
         else:
             self.view.zoom(factor, 0)
-        self.update()
+        self.view.update()
 
     def wheelEvent(self, event : QWheelEvent):
         self._zoom(event, event.angleDelta().y() < 0)
@@ -67,7 +64,7 @@ class BaseWidget(QWidget, AbstractWidget):
             x = -1 if key == Qt.Key_Right else 1 if key == Qt.Key_Left else 0
             y = -1 if key == Qt.Key_Down  else 1 if key == Qt.Key_Up   else 0
             self.view.scroll(x * 20, y * 20)
-            self.update()
+            self.view.update()
 
     # Логика отрисовки изображений
 
@@ -83,11 +80,7 @@ class BaseWidget(QWidget, AbstractWidget):
     def resizeEvent(self, event):
         QWidget.resizeEvent(self, event)
         self.view.resize(self.width(), self.height())
-        self.update()
-
-    def update(self):
         self.view.update()
-        QWidget.update(self)
 
     def visible(self) -> bool:
         return QWidget.isVisible(self)

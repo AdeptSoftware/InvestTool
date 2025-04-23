@@ -6,15 +6,13 @@ from enum            import Enum, IntEnum
 class TableModel(QAbstractTableModel):
     def __init__(self, headers, data, txt_colors=None, bkg_colors=None):
         super().__init__()
-        self._data          = data
-        self._headers       = headers
-        self._txt_colors    = txt_colors
-        self._bkg_colors    = bkg_colors
+        self._headers    = headers
+        self._data       = data
+        self._txt_colors = txt_colors
+        self._bkg_colors = bkg_colors
 
     def rowCount(self, parent=None):
-        if self._data:
-            return len(self._data[0])
-        return 0
+        return len(self._data[0]) if self._data else 0
 
     def columnCount(self, parent=None):
         return len(self._headers)
@@ -28,55 +26,66 @@ class TableModel(QAbstractTableModel):
             return None
 
         match role:
-            case Qt.DisplayRole:
+            case Qt.DisplayRole | Qt.EditRole:
                 return self._data[col][row]
             case Qt.ForegroundRole:
                 if self._txt_colors:
                     return QColor(self._txt_colors[col][row])
+                return QColor(255, 255, 255)
             case Qt.BackgroundRole:
                 if self._bkg_colors:
                     return QColor(self._bkg_colors[col][row])
+                return QColor(28, 28, 28)
+
         return None
+
+    def flags(self, index):
+        return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role != Qt.DisplayRole:
             return None
 
-        match orientation:
-            case Qt.Horizontal:
-                if section < len(self._headers):
-                    return self._headers[section]
+        if orientation == Qt.Horizontal and section < len(self._headers):
+            return self._headers[section]
+
         return f"{section}"
 
-    def sort(self, column, order=None):
-        if self._data:
-            self.layoutAboutToBeChanged.emit()
+    def sort(self, column, order=Qt.AscendingOrder):
+        if not self._data or len(self._data[0]) == 0:
+            return
 
-            empty = []
-            if not self._txt_colors or not self._bkg_colors:
-                for i in range(len(self._data)):
-                    empty += [[0]*len(self._data[i])]
+        self.layoutAboutToBeChanged.emit()
 
-            p = [ list(zip(*self._data)),
-                  list(zip(*(self._txt_colors or empty))),
-                  list(zip(*(self._bkg_colors or empty))) ]
+        cnt        = len(self._data[0])
+        rows       = list(zip(*self._data))
+        txt_colors = list(zip(*self._txt_colors)) if self._txt_colors else None
+        bkg_colors = list(zip(*self._bkg_colors)) if self._bkg_colors else None
 
-            combined = list(zip(*p))
-            combined.sort(
-                key=lambda x: x[0][column] if column < len(x[0]) else "",
-                reverse=(order == Qt.DescendingOrder),
-            )
+        combined   = list(zip(rows, txt_colors or [None]*cnt, bkg_colors or [None]*cnt))
 
-            index = 0
-            for _list in zip(*combined):
-                p[index] = [ list(col) for col in zip(*_list) ]
-                index += 1
+        combined.sort(
+            key=lambda x: x[0][column] if column < len(x[0]) else "",
+            reverse=(order == Qt.DescendingOrder),
+        )
 
-            self._data       = p[0]
-            self._txt_colors = (self._txt_colors and p[1]) or self._txt_colors
-            self._bkg_colors = (self._bkg_colors and p[2]) or self._bkg_colors
+        sorted_rows, sorted_txt, sorted_bkg = zip(*combined)
 
-            self.layoutChanged.emit()
+        self._data = [ list(col) for col in zip(*sorted_rows) ]
+        if self._txt_colors:
+            self._txt_colors = [ list(col) for col in zip(*sorted_txt) ]
+        if self._bkg_colors:
+            self._bkg_colors = [ list(col) for col in zip(*sorted_bkg) ]
+
+        self.layoutChanged.emit()
+
+    def set(self, data, txt_colors=None, bkg_colors=None):
+        self.layoutAboutToBeChanged.emit()
+        self._txt_colors = txt_colors
+        self._bkg_colors = bkg_colors
+        self._data       = data
+        self.layoutChanged.emit()
+
 
 class TableView(QTableView):
     def __init__(self, parent):
@@ -88,16 +97,17 @@ class TableView(QTableView):
                 border-left:        0px solid #D8D8D8;
                 border-right:       1px solid #D8D8D8;
                 border-bottom:      1px solid #D8D8D8;
-                background-color:   white;
-                padding:            4px;
+                background-color:   #1C1C1C;
+                color:              white;
+                padding:            1px;
+                margin:             0px
             }
-            QTableCornerButton::section
-            {
-                border-top:         0px solid #D8D8D8;
-                border-left:        0px solid #D8D8D8;
-                border-right:       1px solid #D8D8D8;
-                border-bottom:      1px solid #D8D8D8;
-                background-color:   white;
+            QTableWidget::item {
+                padding:            1px;
+                margin:             0px;
+            }
+            QHeaderView::up-arrow, QHeaderView::down-arrow {
+                image:              url(none);
             }
             """)
 
@@ -107,3 +117,6 @@ class TableView(QTableView):
 
         header = self.horizontalHeader()
         header.setStretchLastSection(True)
+
+    def set(self, data, txt_colors=None, bkg_colors=None):
+        self.model().set(data, txt_colors, bkg_colors)

@@ -8,23 +8,33 @@ from controls.abstract.data         import AbstractData
 from controls.abstract.item         import AbstractItem
 
 from classes.async_method           import AsyncMethod
-from classes.event_method           import EventMethod
+from controls.utils.event           import EventMethod
 from classes.candlestick            import CandlestickData
 
 from datetime                       import datetime, timedelta
 from sortedcontainers               import SortedDict
 from copy                           import deepcopy
 from typing                         import List
-
+from pathlib                        import Path
 import threading
 import os
+
+def root():
+    current = Path(__file__).parent
+    while True:
+        if (current / '.git').exists() or (current / 'requirements.txt').exists():
+            return str(current)
+        if current.parent == current:
+            raise FileNotFoundError("Корень проекта не найден")
+        current = current.parent
 
 class Storage(AbstractSource):
     """ Класс хранилище данных """
     MAX_LOAD = 1440
-    def __init__(self, client: AbstractClient, instrument: AbstractInstrument, load=True):
-        self._path              = f"{os.getcwd()}\\data\\{client.name()}\\candles"
+    def __init__(self, client: AbstractClient, instrument: AbstractInstrument, update=True, readonly=False):
+        self._path              = f"{root()}\\data\\{client.name()}\\candles"
         self._fullname          = f"{self._path}\\{instrument.ticker}.bin"
+        self._readonly          = readonly
 
         self._client            = client
         self._instrument        = instrument
@@ -36,53 +46,42 @@ class Storage(AbstractSource):
         self._last_price        = 0.0
         self._orderbook         = []
 
-        if load:
-            self.load()
+        self.load(update)
+        self.attach(None, SubscriptionType.CANDLE)
 
     def __del__(self):
         self.detach(None, SubscriptionType.LAST_PRICE)
         self.detach(None, SubscriptionType.ORDERBOOK)
         self.detach(None, SubscriptionType.CANDLE)
-        self.save()
+        if not self._readonly:
+            self.save()
 
     def name(self):
-        return self._instrument.ticker
+        return self._instrument.name
 
     def reset(self):
-        with self._candles as items: items.clear()
+        self._candles.clear()
         with self._last_price_lock:  self._last_price = 0.0
         with self._orderbook_lock:   self._orderbook.clear()
 
-    def load(self):
+    @AsyncMethod
+    def load(self, update=True):
         """ Загрузка данных о свечах, стакане и прочем """
-        os.makedirs(self._path, exist_ok=True)
         if os.path.exists(self._fullname):
-            _type = self._client.CANDLE_ITEM_TYPE                                                                       # type: AbstractItem
-            _size = _type.size()
-            _dict = {}
-            with open(self._fullname, 'rb') as f:
-                while chunk := f.read(_size):
-                    item = _type.restore(chunk)
-                    _dict[item.index] = item
-                with self._candles as items:
-                    items.clear()
-                    items.update(_dict)
+            os.makedirs(self._path, exist_ok=True)
+            self._candles.deserialize(self._fullname, self._client.CANDLE_ITEM_TYPE)
 
-        end   = datetime.now() + timedelta(minutes=10)
-        start = self._candles[-1].index if len(self._candles) > 0 else None
-        with self._last_price_lock:
-            self._candles.load(self._interval, start, end, lambda value: setattr(self, "_last_price", value))
-        self._load_orderbook()
+        if update:
+            with self._last_price_lock:
+                self._candles.load(self._interval, None, lambda value: setattr(self, "_last_price", value))
+            self._load_orderbook()
 
-        self.on_update_last_price.call()
-        self.on_update_orderbook.call()
-        self.on_update_candle.call()
+        self.on_update_last_price.notify()
+        self.on_update_orderbook.notify()
+        self.on_update_candle.notify()
 
-    def save(self):
-        with self._candles as items:
-            with open(self._fullname, 'wb') as f:
-                for item in items.values():
-                    f.write(item.backup())
+    def save(self, filename=None):
+        self._candles.serialize(filename or self._fullname)
 
     def attach(self, callback, _type: SubscriptionType):
         """
@@ -94,13 +93,13 @@ class Storage(AbstractSource):
         match _type:
             case SubscriptionType.CANDLE:
                 interval = self._interval.get(IntervalIndex.SUBSCRIPTION_INTERVAL)
-                self.on_update_candle.subscribe(callback)
+                self.on_update_candle.connect(callback)
                 self._client.attach(self.on_update_candle,     _id, SubscriptionType.CANDLE,    interval=interval)
             case SubscriptionType.ORDERBOOK:
-                self.on_update_orderbook.subscribe(callback)
+                self.on_update_orderbook.connect(callback)
                 self._client.attach(self.on_update_orderbook,  _id, SubscriptionType.ORDERBOOK, depth=50)
             case SubscriptionType.LAST_PRICE:
-                self.on_update_last_price.subscribe(callback)
+                self.on_update_last_price.connect(callback)
                 self._client.attach(self.on_update_last_price, _id, SubscriptionType.LAST_PRICE)
 
     def detach(self, callback, _type: SubscriptionType):
@@ -112,13 +111,13 @@ class Storage(AbstractSource):
         _id = self._instrument.uid
         match _type:
             case SubscriptionType.CANDLE:
-                self.on_update_candle.unsubscribe(callback)
+                self.on_update_candle.disconnect(callback)
                 self._client.detach(self.on_update_candle,     _id, SubscriptionType.CANDLE)
             case SubscriptionType.ORDERBOOK:
-                self.on_update_orderbook.unsubscribe(callback)
+                self.on_update_orderbook.disconnect(callback)
                 self._client.detach(self.on_update_orderbook,  _id, SubscriptionType.ORDERBOOK)
             case SubscriptionType.LAST_PRICE:
-                self.on_update_last_price.unsubscribe(callback)
+                self.on_update_last_price.disconnect(callback)
                 self._client.detach(self.on_update_last_price, _id, SubscriptionType.LAST_PRICE)
 
     @AsyncMethod
@@ -130,7 +129,7 @@ class Storage(AbstractSource):
 
     def last_price(self) -> float:
         with self._last_price_lock:
-            return self._last_price
+            return float(self._last_price)
 
     def orderbook(self) -> List[AbstractItem]:
         with self._orderbook_lock:
@@ -141,16 +140,21 @@ class Storage(AbstractSource):
 
     @EventMethod
     def on_update_candle(self, candle):
-        _dict = { candle.index: candle }
-        with self._candles as items:
-            items.update(_dict)
+        self._candles.update({ candle.index: candle })
+        self.update()
 
     @EventMethod
     def on_update_last_price(self, price):
         with self._last_price_lock:
             self._last_price = price
+        self.update()
 
     @EventMethod
     def on_update_orderbook(self, orderbook):
         with self._orderbook_lock:
             self._orderbook = orderbook
+        self.update()
+
+    @EventMethod
+    def update(self, params=None):
+        return

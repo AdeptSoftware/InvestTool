@@ -51,7 +51,7 @@ class ChangeLayout(AbstractLayout):
             return _items[0].open, _items[-1].close
         return 0, 0
 
-    def render(self):
+    def render(self, renderer):
         font = self._context.set_font(self.TEXT_FONT)
         self._context.set_pen(self.TEXT_PEN)
         self._context.draw_text(self.TEXT_OFFSET.x, self.TEXT_OFFSET.y + self._context.text_height(), self._text)

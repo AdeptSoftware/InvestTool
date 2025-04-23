@@ -14,14 +14,8 @@ class CandlestickData(object):
         self._instrument    = instrument
         self._interval      = interval
         self._data          = SortedDict(_dict or {})
+        self._updated       = self._data.peekitem(-1)[0] if self._data else datetime.min
         self._lock          = RLock()
-
-    def __enter__(self) -> SortedDict:
-        self._lock.acquire()
-        return self._data
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self._lock.release()
 
     def __len__(self):
         # with self._lock:
@@ -68,51 +62,101 @@ class CandlestickData(object):
         :param is_datetime_type: выбор логики поведения в заивисимости от типа
         :return:
         """
+        # Вызывается всегда под self._lock
         if is_datetime_type:
-            end = self._data.peekitem(0)[1].index if self._data else datetime.now()
-            if index < end:
-                self.load.sync(self._interval, index, end)
+            self.load.sync(self._interval, index)
         elif index < 0:
             length     = len(self._data)
             delta      = timedelta(days=self._interval.get(IntervalIndex.MAX_DAYS))
             while index < 0:
                 end    = self._data.peekitem(0)[1].index if length > 0 else datetime.now()
                 start  = end - delta
-                if not self.load.sync(self._interval, start, end) or len(self._data) - length == 0:
+                if not self.load.sync(self._interval, start) or len(self._data) - length == 0:
                     break                                                                                               # больше данных нет
                 index += len(self._data) - length
                 length = len(self._data)
 
     @AsyncMethod
-    def load(self, interval, start=None, end=None, last_price_callback=None):
+    def load(self, interval, start, last_price_callback=None):
         """
         Загрузчик данных
         :param interval: объект интервала для уточнения загружаемого максимально допустимого количества дней
         :param start: дата начала данных
-        :param end: дата конца данных
         :param last_price_callback: функция, с помощью которой будет возвращена информация о последней цене
         :return: достигнут ли конец данных (True/False)
         """
-        if start or end:
-            delta   = timedelta(days=interval.get(IntervalIndex.MAX_DAYS))
+        first = last = None
+        with self._lock:
+            if self._data:
+                first = self._data.peekitem( 0)[0]
+                last  = self._data.peekitem(-1)[0]
 
-            end     = end if end else start + delta
-            end     = self._data.peekitem(0)[0] if self._data else end
-            end     = end.replace(tzinfo=None)
+        delta = timedelta(days=interval.get(IntervalIndex.MAX_DAYS))
+        now   = datetime.now()
+        end   = now
+        flag  = len(self._data) == 0    # Флаг загрузки свежих данных
+        if first:
+            if start is None or start > first:
+                start = last
+                flag  = True
+            else:
+                end   = first
+                start = start if end - start > delta else end - delta
+        elif start is None:
+            start = end - delta
+        start = start.replace(tzinfo=None)
+        end   = end.replace(tzinfo=None)
 
-            start   = start if start else end - delta
-            start   = start.replace(tzinfo=None)
-            start   = start if end - start > delta else end - delta
+        with self._lock:
+            _min = timedelta(minutes=1)
+            if (                  _min > end - start        ) or \
+               (flag and last and _min > end - last         ) or \
+               (flag and          _min > end - self._updated):
+                return True
 
-            _date   = start
-            while _date < end:
-                _list = self._instrument.candles(interval, _date, _date+delta)
-                if len(_list) == 0:
-                    return False
-                _dict = { item.index: item for item in _list }
-                with self._lock:
-                    self._data.update(_dict)
-                    if last_price_callback:
-                        last_price_callback(self._data.peekitem(-1)[1].value)
+        # print(f"{self._instrument.ticker} [{last}, {self._updated}]: {start} {end}")
+
+        _date = start
+        while _date < end:
+            _list = self._instrument.candles(interval, _date, _date+delta)
+            if len(_list) == 0:
+                self._updated = min(_date+delta, now) if flag else self._updated
+                return False
+            _dict = { item.index: item for item in _list }
+            with self._lock:
+                self._data.update(_dict)
+                if last_price_callback:
+                    last_price_callback(self._data.peekitem(-1)[1].value)
                 _date += delta
+                if flag:
+                    self._updated = min(_date, now)
         return True
+
+    def update(self, _dict):
+        with self._lock:
+            self._data.update(_dict)
+            self._updated = max(self._updated, self._data.peekitem(-1)[0])
+
+    def clear(self):
+        with self._lock:
+            self._data.clear()
+            self._updated = datetime.min
+
+    def serialize(self, filename):
+        with self._lock:
+            with open(filename, 'wb') as f:
+                for item in self._data.values():
+                    f.write(item.backup())
+
+    def deserialize(self, filename, _type: AbstractItem):
+        _dict = {}
+        _size = _type.size()
+        with open(filename, 'rb') as f:
+            while chunk := f.read(_size):
+                item = _type.restore(chunk)
+                _dict[item.index] = item
+
+        with self._lock:
+            self._data.clear()
+            self._data.update(_dict)
+            self._updated = self._data.peekitem(-1)[0] if self._data else datetime.min

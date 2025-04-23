@@ -1,6 +1,5 @@
 # background_task.py
-from threading      import Thread, Event, RLock
-from classes.trace  import trace
+from threading import Thread, Event, RLock
 
 class BackgroundTask:
     def __init__(self):

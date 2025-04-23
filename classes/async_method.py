@@ -1,12 +1,41 @@
 # async_method.py
+import threading
+from functools import wraps
+
+class AsyncMethod:
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, owner):
+        @wraps(self.func)
+        def async_wrapper(*args, **kwargs):
+            thread = threading.Thread(
+                target  = self.func,
+                args    = (instance, *args),
+                kwargs  = kwargs,
+                daemon  = True
+            )
+            thread.start()
+            return thread
+
+        @wraps(self.func)
+        def sync_wrapper(*args, **kwargs):
+            return self.func(instance, *args, **kwargs)
+
+        async_wrapper.sync = sync_wrapper
+        return async_wrapper
+
+"""
+
 from functools      import wraps
 from classes.trace  import trace
 
+import traceback
 import threading
 import asyncio
 
 class AsyncMethod:
-    """ Декоратор для запуска синхронных методов в асинхронном режиме """
+    # Декоратор для запуска синхронных методов в асинхронном режиме
     def __init__(self, func):
         self.func   = func
         self.loop   = None
@@ -36,4 +65,5 @@ class AsyncMethod:
         try:
             await self.loop.run_in_executor(None, lambda: self.func(instance, *args, **kwargs))
         except BaseException as e:
-            trace(e)
+            trace(self.func, e)
+    """

@@ -15,5 +15,5 @@ class AbstractLayout:
     def visible(self, value):
         self._visible = bool(value)
 
-    def render(self):
+    def render(self, renderer):
         pass

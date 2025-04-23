@@ -1,9 +1,10 @@
 # chart_renderer.py
-from controls.abstract.renderer         import AbstractDynamicRenderer, Limits
+from controls.abstract.renderer         import AbstractDynamicRenderer, AbstractRendererElement, Limits
 from controls.abstract.source           import AbstractSource
 from controls.abstract.context          import AbstractContext
+from controls.utils.event               import EventMethod
 
-from controls.chart.layout.background   import BackgroundLayout
+from controls.layout.background         import BackgroundLayout
 from controls.chart.layout.grid         import GridLayout
 from controls.chart.layout.candlestick  import CandlestickLayout
 from controls.chart.layout.change       import ChangeLayout
@@ -11,13 +12,15 @@ from controls.chart.layout.change       import ChangeLayout
 import math
 import sys
 
-class ChartRenderer(AbstractDynamicRenderer):
+class ChartRenderer(AbstractDynamicRenderer[AbstractSource]):
     def __init__(self, ctx: AbstractContext):
         self.RENDERER_BORDER_WIDTH   = 5
         self.RENDERER_TEXT_GAP       = 3
         self.RENDERER_EQUAL_MODIFIER = 0.05
         ctx.set_font(ctx.create_font("Arial", 10))
-        super().__init__(ctx)
+        super().__init__(ctx, None)
+
+        self._focused_index  = -1
 
         self._layouts += [
             BackgroundLayout(ctx),
@@ -27,14 +30,21 @@ class ChartRenderer(AbstractDynamicRenderer):
         ]
         self[GridLayout].index2str = lambda x: x.strftime("%H:%M")
 
-    def coordinates(self):
-        for candle in self[CandlestickLayout].candles:
-            yield str(candle["item"]), candle["body"]
+    def set_focused_item(self, index):
+        self._focused_index = max(-1, min(index, len(self[CandlestickLayout].candles)))
 
-    def update(self, source: AbstractSource):
-        items = source.candlestick()
-        if items:
-            self._update(items)
+    def get_element(self, x, y) -> (int, AbstractRendererElement):
+        for index, item in enumerate(self[CandlestickLayout].candles):
+            if item["body"].left <= x <= item["body"].right:
+                return index, AbstractRendererElement(str(item["item"]), None, None, None, None, None)                  # !!! Костыль !!!
+        return None, None
+
+    @EventMethod
+    def update(self):
+        if self._model:
+            items = self._model.candlestick()
+            if items:
+                self._update(items)
 
     def _update(self, items):
         """ Обновление дескрипторов и слоев """
@@ -44,13 +54,13 @@ class ChartRenderer(AbstractDynamicRenderer):
         # Предварительно определим набор данных
         first  = max(1, 1 + math.floor(self._scroll.x / element_width))
         width  = rect.width - (self.RENDERER_BORDER_WIDTH * 2) - self.RENDERER_TEXT_GAP
-        last   = min(len(items), first + math.ceil(width / element_width))
+        last   = first + math.ceil(width / element_width)
         _items = items[-first:-last:-1]
         c_max  = _items.max_text_width(self._context)
         z_size = self._context.text_width('0')
         # Уточним набор данных
         width -= c_max + z_size
-        last   = min(len(items), first + math.ceil(width / element_width))
+        last   = first + math.ceil(width / element_width)
         _items = items[-first:-last:-1]
         c_max  = _items.max_text_width(self._context) + z_size
         # Область отрисовки графика с учетом отступов
@@ -72,7 +82,7 @@ class ChartRenderer(AbstractDynamicRenderer):
         # Обновим данные слоёв
         self[GridLayout].set_vertical_lines(_items, element_width, rect)
         self[GridLayout].set_horizontal_lines(y_min, y_max, count, rect)
-        self[CandlestickLayout].set_candles(_items, item_width, rect, y_min, y_max)
+        self[CandlestickLayout].set_candles(_items, item_width, rect, y_min, y_max, self._focused_index)
         self[ChangeLayout].update(items, -last, -first)
         # Обновим данные о граничных условиях масштабирования и перемешения
         x_min        = 1 - self[CandlestickLayout].CANDLE_WIDTH

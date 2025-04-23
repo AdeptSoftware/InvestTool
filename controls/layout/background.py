@@ -1,6 +1,6 @@
-# background.py
-from controls.abstract.context import AbstractContext
-from controls.abstract.layout  import AbstractLayout
+# grid.py
+from controls.abstract.context  import AbstractContext
+from controls.abstract.layout   import AbstractLayout
 
 class BackgroundLayout(AbstractLayout):
     """ Слой фона """
@@ -8,6 +8,6 @@ class BackgroundLayout(AbstractLayout):
         super().__init__(ctx, visible)
         self.BACKGROUND_BRUSH = ctx.create_brush(28, 28, 28)
 
-    def render(self):
+    def render(self, renderer):
         self._context.set_brush(self.BACKGROUND_BRUSH)
         self._context.draw_rect(self._context.rect())

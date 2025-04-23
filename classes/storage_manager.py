@@ -1,6 +1,6 @@
 # storage_manager.py
 from clients.abstract.client import AbstractClient
-from classes.storage         import Storage
+from classes.storage         import Storage, SubscriptionType
 
 class StorageManager:
     """ Класс, хранящий все хранилища с данными """
@@ -8,16 +8,21 @@ class StorageManager:
         self._client = client
         self._items  = {}
 
-        instruments = self._client.instruments(buy_available=True)
-        for ticker, instrument in instruments.items():
-            self._items[ticker] = Storage(self._client, instrument)
-
     def __del__(self):
         self._client.disconnect()
+
+    def items(self):
+        return self._items.values()
 
     @property
     def client(self) -> AbstractClient:
         return self._client
 
     def get(self, ticker):
-        return self._items[ticker]
+        if ticker in self._items:
+            return self._items[ticker]
+        instrument = self._client.instrument(ticker)
+        if instrument:
+            self._items[ticker] = Storage(self._client, instrument, update=True)
+            return self._items[ticker]
+        return None

@@ -86,7 +86,7 @@ class TabPrice(QWidget):
     def change_instrument(self, ticker, init=False):
         index = self._combobox_interval.currentIndex()
         if index != -1:
-            source : Storage = self._chart.view.source
+            source : Storage = self._chart.view.model
             if source:
                 source.detach(self._chart.update,     SubscriptionType.CANDLE)
                 source.detach(self._orderbook.update, SubscriptionType.ORDERBOOK)
@@ -94,11 +94,11 @@ class TabPrice(QWidget):
 
             source = self._manager.get(ticker)
             if source:
-                self._chart.view.source = source
+                self._chart.view.model = source
                 self._chart.view.reset()
                 self._chart.update()
 
-                self._orderbook.view.source = source
+                self._orderbook.view.model = source
                 self._orderbook.view.reset()
                 self._orderbook.update()
 

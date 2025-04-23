@@ -1,28 +1,28 @@
 # chart_widget.py
-from controls.chart.chart_renderer          import ChartRenderer
-from controls.chart.chart_view              import ChartView
-from controls.wrapper.widget                import BaseWidget
-from controls.wrapper.context               import QtContext
-from PyQt5.QtWidgets                        import QWidget, QToolTip, QMenu, QAction
-from PyQt5.QtCore                           import QPoint
+from controls.chart.chart_renderer  import ChartRenderer
+from controls.chart.chart_view      import ChartView
+from controls.wrapper.widget        import Widget
+from controls.wrapper.context       import QtContext
+from PyQt5.QtWidgets                import QWidget, QToolTip, QMenu, QAction
+from PyQt5.QtCore                   import QPoint
 
-from controls.chart.layout.change           import ChangeLayout
+from controls.chart.layout.change   import ChangeLayout
 
-class ChartWidget(BaseWidget):
+class ChartWidget(Widget):
     """ Класс виджета графика """
     def __init__(self, parent: QWidget):
         super().__init__(parent)
         self._renderer = ChartRenderer(QtContext(self))
-        self.view = ChartView(self, self._renderer)
+        self.view      = ChartView(self, self._renderer)
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
         if self._captured_position is None:
-            x = event.pos().x()
-            for content, rect in self.view.coordinates():
-                if rect.left <= x <= rect.right:
-                    QToolTip.showText(event.globalPos() + QPoint(0, 5), content)
-                    return
+            index, item = self.view.get_element(event.pos().x(), event.pos().y())
+            if item:
+                self.view.set_focused_item(index)
+                self.view.update()
+                QToolTip.showText(event.globalPos() + QPoint(0, 5), str(item.data))
             QToolTip.hideText()
 
     def contextMenuEvent(self, event):
@@ -41,7 +41,7 @@ class ChartWidget(BaseWidget):
 
     def _reset(self):
         self.view.reset()
-        self.update()
+        self.view.update()
 
     def _switch_chg_mode(self):
         layout = self._renderer[ChangeLayout]
@@ -52,4 +52,3 @@ class ChartWidget(BaseWidget):
         layout = self._renderer[ChangeLayout]
         layout.show_price = not layout.show_price
         self.view.update()
-

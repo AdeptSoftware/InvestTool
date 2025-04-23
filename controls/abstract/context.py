@@ -1,7 +1,19 @@
 # context.py
 from typing import overload
+from enum   import Enum
 
-class Point:
+class Alignment(Enum):
+    LT = 0
+    CT = 1
+    RT = 2
+    LC = 3
+    CC = 4
+    RC = 5
+    LB = 6
+    CB = 7
+    RB = 8
+
+class Point(object):
     @property
     def x(self):                                                                                                        # noqa
         pass
@@ -19,7 +31,7 @@ class Point:
         pass
 
 
-class Rect:
+class Rect(object):
     @property
     def left(self):                                                                                                     # noqa
         pass
@@ -72,7 +84,16 @@ class Rect:
     def adjusted(self, x1, y1, x2, y2):
         pass
 
-class Color:
+    def contain(self, x, y):
+        pass
+
+    def intersect(self, rect):
+        pass
+
+    def __copy__(self):
+        pass
+
+class Color(object):
     @property
     def r(self):                                                                                                        # noqa
         pass
@@ -172,3 +193,8 @@ class AbstractContext:
     def draw_text(self, x, y, text):
         pass
 
+    def draw_text_ex(self, rect, text, alignment=Alignment.CC, padding=5):
+        pass
+
+    def draw_polygon(self, points):
+        pass

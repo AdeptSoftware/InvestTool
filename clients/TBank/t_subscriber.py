@@ -68,8 +68,10 @@ class TSubscriber:
         if data:
             with self._lock:
                 for item in self._instruments:
-                    for callback in set(item.callbacks):
-                        callback(fn_converter(data))
+                    if item.uid == data.instrument_uid:
+                        for callback in set(item.callbacks):
+                            callback(fn_converter(data))
+                        break
 
     def __enter__(self):
         self._lock.acquire()

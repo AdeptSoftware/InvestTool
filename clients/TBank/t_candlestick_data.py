@@ -68,18 +68,19 @@ class TCandlestickItem(AbstractItem):
 
 class TCandlestickData(AbstractData):
     @staticmethod
-    def wrap(raw_data):
+    def wrap(raw_data=None):
         items = []
-        delta = datetime.timedelta(hours=datetime.datetime.now().hour - datetime.datetime.now(datetime.UTC).hour)
-        for item in raw_data:
-            items += [TCandlestickItem(
-                _date=item.time + delta,
-                _open=item.open,
-                _close=item.close,
-                _high=item.high,
-                _low=item.low,
-                _volume=item.volume
-            )]
+        if raw_data:
+            delta = datetime.timedelta(hours=datetime.datetime.now().hour - datetime.datetime.now(datetime.UTC).hour)
+            for item in raw_data:
+                items += [TCandlestickItem(
+                    _date=item.time + delta,
+                    _open=item.open,
+                    _close=item.close,
+                    _high=item.high,
+                    _low=item.low,
+                    _volume=item.volume
+                )]
         return items
 
     def max_text_width(self, ctx):

@@ -1,5 +1,7 @@
-# t_client.py
-from tinkoff.invest                     import Client
+# test_tinkoff_client.py
+import time
+
+from tinkoff.invest                     import Client, RequestError
 
 from clients.TBank.t_stream_manager     import TStreamingManager
 from clients.TBank.t_orderbook_data     import TOrderBookData
@@ -64,7 +66,7 @@ class TClient(AbstractClient):
             case SubscriptionType.LAST_PRICE:
                 self._stream_manager.last_price.detach(callback, instrument_uid)
 
-    def find(self, ticker, class_code="TQBR"):
+    def find(self, ticker=None, class_code="TQBR"):
         """ Поиск идентификатора инструмента по его ticker """
         with Client(self._token) as client:
             response = client.instruments.find_instrument(query=ticker)
@@ -82,14 +84,21 @@ class TClient(AbstractClient):
                 if share.buy_available_flag:
                     self._available_instruments[share.ticker] = instrument
 
-    def instrument(self, ticker) -> AbstractInstrument:
+    def instrument(self, ticker, instrument_uid=None) -> AbstractInstrument:
         """
         Возвращает инструмент
         :param ticker: код инструмента
+        :param instrument_uid: идентификатор инструмента
         :return: AbstractInstrument
         """
-        assert ticker in self._instruments
-        return self._instruments[ticker]
+        if ticker:
+            assert ticker in self._instruments
+            return self._instruments[ticker]
+        else:
+            for ticker in self._instruments:
+                if self._instruments[ticker].uid == instrument_uid:
+                    return self._instruments[ticker]
+            return None
 
     def instruments(self, buy_available=True):
         """
@@ -111,18 +120,28 @@ class TClient(AbstractClient):
 
     def upload_candles(self, instrument_id, interval, start, end, **kwargs):
         with Client(self._token) as client:
-            response            = client.market_data.get_candles(
-                instrument_id   = instrument_id,
-                interval        = interval,
-                from_           = start,
-                to              = end
-            )
-            return TCandlestickData.wrap(response.candles)
+            try:
+                response            = client.market_data.get_candles(
+                    instrument_id   = instrument_id,
+                    interval        = interval,
+                    from_           = start,
+                    to              = end
+                )
+                return TCandlestickData.wrap(response.candles)
+            except RequestError:
+                instrument = self.instrument(None, instrument_id)
+                print(f"[Candlestick]: Skip {instrument.ticker if instrument else instrument_id}")
+                return TCandlestickData.wrap()
 
     def upload_orderbook(self, instrument_id, depth=50, **kwargs):
         with Client(self._token) as client:
-            response            = client.market_data.get_order_book(
-                instrument_id   = instrument_id,
-                depth           = depth
-            )
-            return TOrderBookData.wrap(response)
+            try:
+                response            = client.market_data.get_order_book(
+                    instrument_id   = instrument_id,
+                    depth           = depth
+                )
+                return TOrderBookData.wrap(response)
+            except RequestError:
+                instrument = self.instrument(None, instrument_id)
+                print(f"[OrderBook]: Skip {instrument.ticker if instrument else instrument_id}")
+                return TOrderBookData.wrap()

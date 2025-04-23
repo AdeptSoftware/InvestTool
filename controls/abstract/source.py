@@ -1,9 +1,10 @@
 # source.py
-from controls.abstract.data import AbstractData
-from controls.abstract.item import AbstractItem
-from typing                 import List
+from controls.abstract.data     import AbstractData
+from controls.abstract.item     import AbstractItem
+from controls.abstract.model    import AbstractModel
+from typing                     import List
 
-class AbstractSource:
+class AbstractSource(AbstractModel):
     """ Абстрактный источник данных """
 
     def orderbook(self) -> List[AbstractItem]:
