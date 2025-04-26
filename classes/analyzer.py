@@ -1,7 +1,9 @@
 # analyzer.py
-from classes.storage_manager import StorageManager, Storage
-from controls.abstract.data  import AbstractData
-from datetime                import datetime
+from classes.storage_manager    import StorageManager, Storage
+from controls.abstract.data     import AbstractData
+from datetime                   import datetime
+from controls.utils.functions   import round_x as rx
+
 import asyncio
 import math
 
@@ -36,12 +38,12 @@ class DataAnalyzer:
         _price = storage.last_price()
         _delta, _percent = self._profit(items)
         _acceleration, _determination = self._trend(items)
-        return _price, _delta, _percent, _acceleration, _determination
+        return rx(_price), rx(_delta), rx(_percent), rx(_acceleration), rx(_determination)
 
     @staticmethod
     def _profit(items):
         if items:
-            delta   = items[-1].value - items[0].value
+            delta   = items[-1].close - items[0].open
             percent = round((delta / items[0].value) * 100, 2)
             return delta, percent
         return 0, 0

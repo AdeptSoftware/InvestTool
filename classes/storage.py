@@ -1,4 +1,6 @@
 # storage.py                                                                                                            # TBank max rate: 600 pcs/min
+import asyncio
+
 from clients.abstract.client        import AbstractClient, SubscriptionType
 from clients.abstract.instrument    import AbstractInstrument
 from clients.abstract.interval      import IntervalIndex
@@ -75,13 +77,15 @@ class Storage(AbstractSource):
             with self._last_price_lock:
                 self._candles.load(self._interval, None, lambda value: setattr(self, "_last_price", value))
             self._load_orderbook()
-
-        self.on_update_last_price.notify()
-        self.on_update_orderbook.notify()
-        self.on_update_candle.notify()
+        self._notify()
 
     def save(self, filename=None):
         self._candles.serialize(filename or self._fullname)
+
+    def _notify(self):
+        self.on_update_last_price.notify()
+        self.on_update_orderbook.notify()
+        self.on_update_candle.notify()
 
     def attach(self, callback, _type: SubscriptionType):
         """

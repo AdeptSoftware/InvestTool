@@ -28,11 +28,11 @@ class AbstractClient:
     def name(self):
         pass
 
-    def attach(self, callback, _id, _type : SubscriptionType, **kwargs):
+    def attach(self, coroutine, _id, _type : SubscriptionType, **kwargs):
         """ Добавить наблюдателя для подписки на событие обновления данных """
         pass
 
-    def detach(self, callback, _id, _type : SubscriptionType):
+    def detach(self, coroutine, _id, _type : SubscriptionType):
         """ Удалить наблюдателя из подписок на событие обновления данных """
         pass
 

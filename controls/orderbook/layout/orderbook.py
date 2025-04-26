@@ -129,7 +129,7 @@ class OrderBookLayout(AbstractLayout):
             if item.type == OrderType.SEP:
                 break
 
-        center           = math.floor(item_height * (index - 0.5))
+        center           = math.floor(item_height * (index + 0.5))
         center          -= math.floor(client_height / 2)
         self.scroll_min  = center - max_scroll
         self.scroll_max  = center

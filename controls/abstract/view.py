@@ -9,7 +9,7 @@ T = TypeVar('T', bound=AbstractModel)
 class AbstractView(Generic[T]):
     """
     Абстрактный класс представления данных
-    * update(self)
+    * async def update(self)
     """
     def __init__(self, parent : AbstractWidget, renderer: AbstractDynamicRenderer[T]):
         self._renderer = renderer
@@ -25,6 +25,8 @@ class AbstractView(Generic[T]):
 
     @model.setter
     def model(self, value : T):
+        if self._renderer.model:
+            self._renderer.model.update.disconnect(self._parent.update)
         self._renderer.model = value
         self._renderer.model.update.connect(self._parent.update)
 

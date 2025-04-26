@@ -9,6 +9,7 @@ from controls.chart.layout.grid         import GridLayout
 from controls.chart.layout.candlestick  import CandlestickLayout
 from controls.chart.layout.change       import ChangeLayout
 
+import threading
 import math
 import sys
 
@@ -30,6 +31,8 @@ class ChartRenderer(AbstractDynamicRenderer[AbstractSource]):
         ]
         self[GridLayout].index2str = lambda x: x.strftime("%H:%M")
 
+        self._lock = threading.RLock()
+
     def set_focused_item(self, index):
         self._focused_index = max(-1, min(index, len(self[CandlestickLayout].candles)))
 
@@ -42,9 +45,10 @@ class ChartRenderer(AbstractDynamicRenderer[AbstractSource]):
     @EventMethod
     def update(self):
         if self._model:
-            items = self._model.candlestick()
-            if items:
-                self._update(items)
+            with self._lock:
+                items = self._model.candlestick()
+                if items:
+                    self._update(items)
 
     def _update(self, items):
         """ Обновление дескрипторов и слоев """
