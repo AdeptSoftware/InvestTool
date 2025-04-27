@@ -5,6 +5,7 @@ from clients.abstract.client        import AbstractClient, SubscriptionType
 from clients.abstract.instrument    import AbstractInstrument
 from clients.abstract.interval      import IntervalIndex
 
+from controls.abstract.signal       import AbstractSignal
 from controls.abstract.source       import AbstractSource
 from controls.abstract.data         import AbstractData
 from controls.abstract.item         import AbstractItem
@@ -16,7 +17,7 @@ from classes.candlestick            import CandlestickData
 from datetime                       import datetime, timedelta
 from sortedcontainers               import SortedDict
 from copy                           import deepcopy
-from typing                         import List
+from typing                         import List, Callable
 from pathlib                        import Path
 import threading
 import os
@@ -87,13 +88,20 @@ class Storage(AbstractSource):
         self.on_update_orderbook.notify()
         self.on_update_candle.notify()
 
-    def attach(self, callback, _type: SubscriptionType):
+    @staticmethod
+    def _extract_callback(obj: AbstractSignal | Callable):
+        if callable(obj):
+            return obj
+        return obj.notify if obj else None
+
+    def attach(self, obj: AbstractSignal | Callable, _type: SubscriptionType):
         """
         Подписка на события
-        :param callback: функция обработчик с функцией вида func()
+        :param obj: сигнал обработчик или синхронная функция
         :param _type: тип подписки
         """
         _id = self._instrument.uid
+        callback = self._extract_callback(obj)
         match _type:
             case SubscriptionType.CANDLE:
                 interval = self._interval.get(IntervalIndex.SUBSCRIPTION_INTERVAL)
@@ -106,13 +114,14 @@ class Storage(AbstractSource):
                 self.on_update_last_price.connect(callback)
                 self._client.attach(self.on_update_last_price, _id, SubscriptionType.LAST_PRICE)
 
-    def detach(self, callback, _type: SubscriptionType):
+    def detach(self, obj: AbstractSignal | Callable, _type: SubscriptionType):
         """
         Отписка от обновления данных
-        :param callback: функция обработчик
+        :param obj: сигнал обработчик или синхронная функция
         :param _type: тип подписки
         """
         _id = self._instrument.uid
+        callback = self._extract_callback(obj)
         match _type:
             case SubscriptionType.CANDLE:
                 self.on_update_candle.disconnect(callback)

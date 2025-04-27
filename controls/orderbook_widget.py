@@ -21,14 +21,13 @@ class OrderBookWidget(Widget):
             index, item = self.view.get_element(x, y)
             if item and item.rect.top <= y <= item.rect.bottom:
                 self.view.set_focused_item(index)
-        self.view.update()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.view.set_focused_item(-1)
 
     def contextMenuEvent(self, event):
         menu    = QMenu()
         action1 = menu.addAction("Сбросить")
-        action1.triggered.connect(self._reset)
+        action1.triggered.connect(self.view.reset)
         menu.exec(event.globalPos())
-
-    def _reset(self):
-        self.view.reset()
-        self.view.update()

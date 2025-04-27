@@ -47,21 +47,20 @@ class _TableWidgetEx(Widget):
                     self.view.set_focused_item(col=index)
                 else:
                     self.view.set_focused_item(row=index)
-            self.view.update()
         if self._captured_grid:
             offset = event.pos() - self._captured_position
             if isinstance(self._captured_item, TableHeader):
                 x = event.pos().x() - self.view.scroll.x
-                if x >= self._captured_item.rect.left + self.DRAG_RANGE:                                  # Запрещаем уводить правую границу левее левой
+                if x >= self._captured_item.rect.left + self.DRAG_RANGE:                                                # Запрещаем уводить правую границу левее левой
                     self._captured_item.width = max(self.DRAG_RANGE, self._captured_item.rect.width + offset.x())
                     self._captured_position = event.pos()
-                    self.view.update()
+                    self.view.invalidate()
             else:
                 y = event.pos().y() - self.view.scroll.y
                 if y >= self._captured_item.rect.top + self.DRAG_RANGE:
                     self._captured_item.height = max(self.DRAG_RANGE, self._captured_item.rect.height + offset.y())
                     self._captured_position = event.pos()
-                    self.view.update()
+                    self.view.invalidate()
         else:
             super().mouseMoveEvent(event)
 
@@ -72,7 +71,7 @@ class _TableWidgetEx(Widget):
             if isinstance(self._captured_item, TableHeader):
                 column, descending = self.view.model.current_sorted_parameters()
                 self.view.model.sort(self._captured_index, not descending if self._captured_index == column else True)
-                self.view.update()
+                self.view.invalidate()
             # Очищаем
             self._captured_item  = None
             self._captured_index = None
@@ -103,19 +102,25 @@ class TableWidgetEx(QWidget):
         self.v_scroll.valueChanged.connect(self._on_scroll)
         self.h_scroll.valueChanged.connect(self._on_scroll)
 
-        self.table.view.set_update_callback(self._on_update)
+        self.table.view.prepare.connect(self._on_update)
 
     def _on_scroll(self):
-        self.table.view.scroll.x = -self.h_scroll.value()
-        self.table.view.scroll.y = -self.v_scroll.value()
-        self.table.view.update()
+        scroll   = self.table.view.scroll
+        scroll.x = -self.h_scroll.value()
+        scroll.y = -self.v_scroll.value()
+        self.table.view.scroll = scroll
 
     def _on_update(self):
-        self.h_scroll.setValue(-self.view.scroll.x)
-        self.v_scroll.setValue(-self.view.scroll.y)
-        self.h_scroll.setMaximum(-self.view.scroll.x_min)
-        self.v_scroll.setMaximum(-self.view.scroll.y_min)
+        scroll   = self.table.view.scroll
+        self.h_scroll.setValue(-scroll.x)
+        self.v_scroll.setValue(-scroll.y)
+        self.h_scroll.setMaximum(-scroll.x_min)
+        self.v_scroll.setMaximum(-scroll.y_min)
 
     @property
     def view(self):
         return self.table.view
+
+    def update(self):
+        self.table.prepare()
+        super().update()

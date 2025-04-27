@@ -3,9 +3,10 @@ from controls.abstract.context  import AbstractContext, Alignment, Rect, Color
 from controls.abstract.element  import AbstractRendererElement, Alignment
 from controls.abstract.layout   import AbstractLayout
 from dataclasses                import dataclass
-from threading                  import RLock
 from enum                       import Enum
 from typing                     import List
+
+import threading
 import math
 
 
@@ -17,7 +18,6 @@ class OrderType(Enum):
 @dataclass
 class OrderBookLayoutItem(AbstractRendererElement):
     x_rect:             Rect                    # прямоугольная область закрашенной части
-    focused:            bool                    # элемент в фокусе
     type:               OrderType               # тип элемента
     alignment_volume:   Alignment
 
@@ -31,9 +31,7 @@ class OrderBookLayoutItem(AbstractRendererElement):
 
         self.alignment_volume   = Alignment.RC
         self.x_rect             = None
-        self.focused            = False
         self.type               = _type
-
 
 
 class OrderBookLayout(AbstractLayout):
@@ -51,10 +49,15 @@ class OrderBookLayout(AbstractLayout):
         self.ITEM_BORDER_WIDTH      = 1
         self.ITEM_TEXT_SIZE         = 2
 
+        self._focused_index         = -1
         self.scroll_min             = 0
         self.scroll_max             = 0
         self.items                  = []                                                                                # type: List[OrderBookLayoutItem]
-        self.lock                   = RLock()
+
+        self.lock                   = threading.RLock()
+
+    def set_focused_item(self, index):
+        self._focused_index = max(-1, min(index, len(self.items)))
 
     def render(self, renderer):
         with self.lock:
@@ -65,7 +68,7 @@ class OrderBookLayout(AbstractLayout):
             ask_brush   = ctx.create_brush(*self.ITEM_SELL_COLOR)
             bid_brush   = ctx.create_brush(*self.ITEM_BUY_COLOR)
             empty_brush = ctx.create_brush(None)
-            for item in self.items:
+            for index, item in enumerate(self.items):
                 if item.background is None:
                     match item.type:
                         case OrderType.ASK:
@@ -83,7 +86,7 @@ class OrderBookLayout(AbstractLayout):
                 ctx.draw_rect(item.x_rect)
                 # Рисуем контур элемента
                 ctx.set_pen(border_pen)
-                ctx.set_brush(focus_brush if item.focused else empty_brush)
+                ctx.set_brush(focus_brush if self._focused_index == index else empty_brush)
                 ctx.draw_rect(item.rect)
                 # Выводим цену
                 sym = '%' if item.type == OrderType.SEP else ''
@@ -106,7 +109,7 @@ class OrderBookLayout(AbstractLayout):
             pen = self._context.create_pen(*color_false,  self.ITEM_TEXT_SIZE)
         self._context.set_pen(pen)
 
-    def update(self, orderbook, last_price, scroll, zoom, focused_item):
+    def prepare(self, orderbook, last_price, scroll, zoom):
         assert (orderbook is not None)
         if len(orderbook) == 0:
             return
@@ -116,7 +119,7 @@ class OrderBookLayout(AbstractLayout):
             self.items.extend(self.convert(orderbook, OrderType.ASK))
             self.items.append(sep)
             self.items.extend(self.convert(orderbook, OrderType.BID))
-            self.recalculate_rect(scroll, zoom, sep.data[3], focused_item)
+            self.recalculate_rect(scroll, zoom, sep.data[3])
 
     def calculate_bounds(self, zoom_y):
         client_height    = self._context.rect().height
@@ -156,7 +159,7 @@ class OrderBookLayout(AbstractLayout):
             items.append(OrderBookLayoutItem(data=(item.price, item.count), _type=_type))
         return items
 
-    def recalculate_rect(self, scroll, zoom, _max, focused_index):
+    def recalculate_rect(self, scroll, zoom, _max):
         height, center   = self.calculate_bounds(zoom.y)
         rect             = self._context.rect()
         top              = rect.top - center + scroll.y
@@ -172,5 +175,4 @@ class OrderBookLayout(AbstractLayout):
                     w    = width
             item.rect    = self._context.create_rect(rect.left, top, width, height)
             item.x_rect  = self._context.create_rect(x,         top, w,     height)
-            item.focused = index == focused_index
             top         += height

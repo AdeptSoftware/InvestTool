@@ -17,7 +17,7 @@ class ChangeLayout(AbstractLayout):
         self.show_by_day    = True
         self.show_price     = False
 
-    def update(self, items, first, last):
+    def prepare(self, items, first, last):
         if len(items) > 0:
             _date = ""
             if self.show_by_day:

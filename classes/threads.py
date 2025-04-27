@@ -29,40 +29,62 @@ class BackgroundThread:
         pass
 
 
-class BackgroundTask(BackgroundThread):
+class BackgroundLoop:
     """
-    Класс, запускающий асинхронную функцию в отдельном потоке
+    Класс, запускающий асинхронную функцию в текущем потоке
     * async def _task(self)
     """
     def __init__(self):
-        super().__init__()
         self._loop      = None                                                                                          # type: asyncio.AbstractEventLoop
         self._started   = threading.Event()
 
-    def start(self, timeout=5):
-        if super().start():
-            self._started.wait(timeout=timeout)
-            return True
-        return False
+    def start(self):
+        if self._loop is None:
+            try:
+                self._loop = asyncio.get_running_loop()
+            except RuntimeError:
+                self._loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self._loop)
 
-    async def _task(self):
-        pass
-
-    def _main(self):
-        self._loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self._loop)
-        try:
-            self._loop.create_task(self._task())
-            self._started.set()
-            self._loop.run_forever()
-        except Exception:
-            print(traceback.format_exc())
-        finally:
-            self._loop.close()
+            try:
+                self._loop.create_task(self._task())
+                self._started.set()
+                self._loop.run_forever()
+            except Exception:
+                print(traceback.format_exc())
+                self._loop.close()
 
     def shutdown(self):
         if self._loop and self._loop.is_running():
             self._loop.call_soon_threadsafe(self._loop.stop)
             while self._loop.is_running():
                 time.sleep(0.01)
-        super().shutdown()
+            self._started.clear()
+            self._loop = None
+
+    async def _task(self):
+        pass
+
+
+class BackgroundTask(BackgroundThread, BackgroundLoop):
+    """
+    Класс, запускающий асинхронную функцию в отдельном потоке
+    * async def _task(self)
+    """
+    def __init__(self):
+        BackgroundThread.__init__(self)
+        BackgroundLoop.__init__(self)
+
+    def start(self, timeout=5):
+        if BackgroundThread.start(self):
+            self._started.wait(timeout=timeout)
+            return True
+        return False
+
+    def _main(self):
+        BackgroundLoop.start(self)
+
+    def shutdown(self):
+        BackgroundLoop.shutdown(self)
+        BackgroundThread.shutdown(self)
+

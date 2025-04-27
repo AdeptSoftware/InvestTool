@@ -24,6 +24,7 @@ class Limits:
     def __call__(self, dx, dy):
         self.x = max(min(self.x + dx, self.x_max), self.x_min)
         self.y = max(min(self.y + dy, self.y_max), self.y_min)
+        return self
 
     def reset(self):
         self.x = 0

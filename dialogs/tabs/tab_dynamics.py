@@ -1,13 +1,10 @@
 # tab_dynamics - вкладка с анализом динамики рынка
 from PyQt5.QtWidgets                    import QWidget, QGridLayout, QLabel, QComboBox, QPushButton
-from PyQt5.QtCore                       import pyqtSignal
-
 from controls.combobox_ticker_widget    import TickerComboBox
 from controls.table_widget_ex           import TableWidgetEx, TableModel, TableItem
 from clients.abstract.interval          import AbstractInterval, IntervalIndex
 from classes.storage_manager            import StorageManager, SubscriptionType
 from classes.analyzer                   import DataAnalyzer
-from classes.async_method               import AsyncMethod
 
 import datetime
 import sys
@@ -29,13 +26,11 @@ class TabDynamics(QWidget):
         self.init_userinterface()
 
         for storage in self._manager.items():
-            storage.attach(self.refresh, SubscriptionType.CANDLE)
-            storage.attach(self.refresh, SubscriptionType.LAST_PRICE)
+            storage.update.connect(self.refresh)
 
     def __del__(self):
         for storage in self._manager.items():
-            storage.detach(self.refresh, SubscriptionType.CANDLE)
-            storage.detach(self.refresh, SubscriptionType.LAST_PRICE)
+            storage.update.connect(self.refresh)
 
     def init_controls(self):
         self._button.setText("Отслеживать")
@@ -50,7 +45,7 @@ class TabDynamics(QWidget):
         model.headers.stretch  = True
         self._table.view.model = model
 
-        self.refresh.sync()
+        self.refresh()
 
     def init_userinterface(self):
         layout = QGridLayout()
@@ -72,7 +67,6 @@ class TabDynamics(QWidget):
         layout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(layout)
 
-    @AsyncMethod
     def refresh(self):
         now = datetime.datetime.now()
         if now - self._updated < datetime.timedelta(seconds=0.1):
@@ -89,6 +83,6 @@ class TabDynamics(QWidget):
             model.clear()
             model.append_rows(items)
             model.sort(*model.current_sorted_parameters())
-            self._table.view.update()
+            self._table.update()
 
         self._updated = now

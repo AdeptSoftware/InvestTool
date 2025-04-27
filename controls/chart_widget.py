@@ -21,13 +21,16 @@ class ChartWidget(Widget):
             index, item = self.view.get_element(event.pos().x(), event.pos().y())
             if item:
                 self.view.set_focused_item(index)
-                self.view.update()
                 QToolTip.showText(event.globalPos() + QPoint(0, 5), str(item.data))
             QToolTip.hideText()
 
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.view.set_focused_item(-1)
+
     def contextMenuEvent(self, event):
         menu = QMenu()
-        self._ctx_action(menu, "Сбросить", self._reset)
+        self._ctx_action(menu, "Сбросить", self.view.reset)
         self._ctx_action(menu, "Изменение за день", self._switch_chg_mode, self._renderer[ChangeLayout].show_by_day)
         self._ctx_action(menu, "Показывать изменение цены", self._switch_shw_mode, self._renderer[ChangeLayout].show_price)
         menu.exec(event.globalPos())
@@ -39,16 +42,12 @@ class ChartWidget(Widget):
         action.setCheckable(checked)
         action.setChecked(checked)
 
-    def _reset(self):
-        self.view.reset()
-        self.view.update()
-
     def _switch_chg_mode(self):
         layout = self._renderer[ChangeLayout]
         layout.show_by_day = not layout.show_by_day
-        self.view.update()
+        self.view.invalidate()
 
     def _switch_shw_mode(self):
         layout = self._renderer[ChangeLayout]
         layout.show_price = not layout.show_price
-        self.view.update()
+        self.view.invalidate()

@@ -88,23 +88,21 @@ class TabPrice(QWidget):
         if index != -1:
             source : Storage = self._chart.view.model
             if source:
-                source.detach(self._chart.view.update,     SubscriptionType.CANDLE)
-                source.detach(self._orderbook.view.update, SubscriptionType.ORDERBOOK)
-                source.detach(self._orderbook.view.update, SubscriptionType.LAST_PRICE)
+                source.detach(self._chart.update_signal, SubscriptionType.CANDLE)
+                source.detach(self._orderbook.update_signal, SubscriptionType.ORDERBOOK)
+                source.detach(self._orderbook.update_signal, SubscriptionType.LAST_PRICE)
 
             source = self._manager.get(ticker)
             if source:
                 self._chart.view.model = source
                 self._chart.view.reset()
-                self._chart.view.update()
 
                 self._orderbook.view.model = source
                 self._orderbook.view.reset()
-                self._orderbook.view.update()
 
-                source.attach(self._chart.view.update,     SubscriptionType.CANDLE)
-                source.attach(self._orderbook.view.update, SubscriptionType.ORDERBOOK)
-                source.attach(self._orderbook.view.update, SubscriptionType.LAST_PRICE)
+                source.attach(self._chart.update_signal, SubscriptionType.CANDLE)
+                source.attach(self._orderbook.update_signal, SubscriptionType.ORDERBOOK)
+                source.attach(self._orderbook.update_signal, SubscriptionType.LAST_PRICE)
 
                 if not init:
                     self._manager.client.reconnect()

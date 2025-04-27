@@ -19,12 +19,16 @@ class CandlestickLayout(AbstractLayout):
         self.CANDLE_FOCUSED     = ctx.create_pen  (255, 255,   0, width=4)
 
         self._candles           = []
+        self._focused_index     = -1
 
     @property
     def candles(self):
         return self._candles
 
-    def set_candles(self, items, width, rect, y_min, y_max, focused):
+    def set_focused_item(self, index):
+        self._focused_index = max(-1, min(index, len(self._candles)))
+
+    def set_candles(self, items, width, rect, y_min, y_max):
         """
         Вычисление прямоугольных областей свечей
         :param items:  данные типа AbstractData
@@ -32,7 +36,6 @@ class CandlestickLayout(AbstractLayout):
         :param rect:   область отрисовки данных
         :param y_min:  минимальное значение по оси Y
         :param y_max:  максимальное значение по оси Y
-        :param focused индекс элемента в фокусе
         """
         candles  = []
         x        = rect.right - (width // 2)
@@ -47,21 +50,20 @@ class CandlestickLayout(AbstractLayout):
                 "body":     self._context.create_rect(x=x-(width//2),           y=_min, w=width,           h=_max-_min),
                 "wick":     self._context.create_rect(x=x-(self.WICK_WIDTH//2), y=y0,   w=self.WICK_WIDTH, h=y1-y0),
                 "down":     item.close < item.open,
-                "focused":  len(candles) == focused,
                 "item":     item
             }]
             x -= width + self.CANDLE_GAP
         self._candles = candles
 
     def render(self, renderer):
-        for candle in self._candles:
+        for index, candle in enumerate(self._candles):
             if candle["down"]:
                 self._context.set_brush(self.CANDLE_DOWN_BRUSH)
                 self._context.set_pen(self.CANDLE_DOWN_PEN)
             else:
                 self._context.set_brush(self.CANDLE_UP_BRUSH)
                 self._context.set_pen(self.CANDLE_UP_PEN)
-            if candle["focused"]:
+            if self._focused_index == index:
                 self._context.set_pen(self.CANDLE_FOCUSED)
             self._context.draw_rect(candle["wick"])
             self._context.draw_rect(candle["body"])

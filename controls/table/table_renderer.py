@@ -8,6 +8,7 @@ from controls.table.layout.header       import HeaderLayout
 from controls.table.layout.grid         import GridLayout
 from controls.table.layout.body         import BodyLayout
 
+
 class TableRenderer(AbstractDynamicRenderer[TableModel]):
     def __init__(self, ctx: AbstractContext):
         ctx.set_font(ctx.create_font("Arial", 10))
@@ -46,8 +47,8 @@ class TableRenderer(AbstractDynamicRenderer[TableModel]):
                         return index, item
         return None, None
 
-    @EventMethod
-    def update(self):
+
+    def prepare(self):
         with self._model:
             self._model.update(self._context)                                                                           # noqa
 

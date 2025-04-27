@@ -2,7 +2,6 @@
 from controls.abstract.renderer          import AbstractDynamicRenderer, AbstractRendererElement, Limits
 from controls.abstract.context           import AbstractContext
 from controls.abstract.source            import AbstractSource
-from controls.utils.event                import EventMethod
 
 from controls.layout.background          import BackgroundLayout
 from controls.orderbook.layout.orderbook import OrderBookLayout
@@ -14,14 +13,13 @@ class OrderBookRenderer(AbstractDynamicRenderer[AbstractSource]):
         super().__init__(ctx, None)
         ctx.set_font(ctx.create_font("Arial", 10))
 
-        self._focused_index     = -1
         self._layouts          += [
             BackgroundLayout(ctx),
             OrderBookLayout(ctx)
         ]
 
     def set_focused_item(self, index):
-        self._focused_index = max(-1, min(index, len(self[OrderBookLayout].items)))
+        self[OrderBookLayout].set_focused_item(index)
 
     def get_element(self, x, y) -> (int, AbstractRendererElement):
         with self[OrderBookLayout].lock:
@@ -30,10 +28,9 @@ class OrderBookRenderer(AbstractDynamicRenderer[AbstractSource]):
                     return index, item
         return None, None
 
-    @EventMethod
-    def update(self):
+    def prepare(self):
         if self._model:
-            self[OrderBookLayout].update(self._model.orderbook(), self._model.last_price(), self._scroll, self._zoom, self._focused_index)
+            self[OrderBookLayout].prepare(self._model.orderbook(), self._model.last_price(), self._scroll, self._zoom)
             self._zoom   = Limits(x=self._zoom.x,   y=self._zoom.y,   x_min=-100, x_max=20, y_min=0,    y_max=25)
             self._scroll = Limits(x=self._scroll.x, y=self._scroll.y, x_min=0,    x_max=0,
                                   y_min=self[OrderBookLayout].scroll_min, y_max=self[OrderBookLayout].scroll_max)

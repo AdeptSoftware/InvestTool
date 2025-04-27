@@ -4,8 +4,8 @@ from controls.abstract.context  import AbstractContext
 from controls.abstract.layout   import AbstractLayout
 from controls.abstract.model    import AbstractModel
 from controls.utils.limits      import Limits
-from controls.utils.event       import EventMethod
 from typing                     import List, TypeVar, Generic, Optional, Type
+from copy                       import copy
 
 M = TypeVar('M', bound=AbstractModel)
 L = TypeVar('L', bound=AbstractLayout)
@@ -47,7 +47,7 @@ class AbstractDynamicRenderer(AbstractStaticRenderer, Generic[M]):
     """
     Класс динамического отрисовщика (масштабирование, прокрутка)\n
     * get_element(self, x, y) -> (int, AbstractRendererElement)
-    * @EventMethod update(self)
+    * prepare(self)
     """
     def __init__(self, ctx: AbstractContext, model: M):
         self._zoom      = Limits(0, 0)
@@ -57,11 +57,21 @@ class AbstractDynamicRenderer(AbstractStaticRenderer, Generic[M]):
 
     @property
     def zoom(self) -> Limits:
-        return self._zoom
+        return copy(self._zoom)
+
+    @zoom.setter
+    def zoom(self, value: Limits):
+        assert(type(value) is Limits)
+        self._zoom = value
 
     @property
     def scroll(self) -> Limits:
-        return self._scroll
+        return copy(self._scroll)
+
+    @scroll.setter
+    def scroll(self, value: Limits):
+        assert(type(value) is Limits)
+        self._scroll = value
 
     @property
     def model(self) -> M:
@@ -70,17 +80,14 @@ class AbstractDynamicRenderer(AbstractStaticRenderer, Generic[M]):
     @model.setter
     def model(self, value: M):
         self._model = value
-        self.update()
 
     def reset(self):
         self._scroll.reset()
         self._zoom.reset()
-        self.update()
 
     def resize(self, width, height):
         super().resize(width, height)
-        self.update()
 
-    @EventMethod
-    def update(self):
+    def prepare(self):
+        """ Этот метод нужен для подготовки элементов рендера """
         pass
